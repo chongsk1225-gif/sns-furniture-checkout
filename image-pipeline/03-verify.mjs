@@ -2,7 +2,7 @@
 //   node 03-verify.mjs --brand acme [--sku SKU]
 import { openDb, startRun, finishRun, installShutdown, integrityOk, acquireLock } from "./lib/db.mjs";
 import { hamming, normSku, skuVariants, nameAliasTokens, nowIso, parseArgs } from "./lib/util.mjs";
-import { kindRank } from "./lib/sources.mjs";
+import { kindRank, skuTokenInUrl } from "./lib/sources.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const releaseLock = acquireLock({ force: !!args.force, label: `03-verify ${args.brand || ""} pid${process.pid}` });
@@ -82,7 +82,14 @@ for (const p of products) {
     if (kind !== "diagram" && kind !== "lifestyle" && ar > 2.2) kind = "diagram"; // dimension strips / banners
     const tokensInFile = skuTokensInFile(p.sku, url, aliasTokens);
     const viaAlias = aliasTokens.length > 0 && tokensInFile.some((t) => aliasTokens.includes(normSku(t)));
-    const inUrl = c.sku_token_in_url === 1 || tokensInFile.length > 0;
+    // c.sku_token_in_url is computed once at seed/fetch time and can go stale
+    // when skuVariants() improves (it did); tokensInFile only catches a SKU
+    // variant that is its OWN dash/underscore-separated part of the filename
+    // (needed for combo detection below), so it misses a variant like
+    // "CMBR6252BG" that only matches once the filename's parts are joined
+    // back together (file "cm-br6252bg.jpg" splits to "cm" + "br6252bg").
+    // skuTokenInUrl() re-checks live, as a substring of the whole filename.
+    const inUrl = c.sku_token_in_url === 1 || tokensInFile.length > 0 || skuTokenInUrl(p.sku, url);
     const isCombo = tokensInFile.length >= 2 || kind === "combo";
 
     const ev = {
