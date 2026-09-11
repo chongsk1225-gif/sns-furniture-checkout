@@ -28,14 +28,27 @@ const dist = (getN) => {
   return d;
 };
 const before = dist((p) => p.current_image_count || 0);
+// Verified-only gallery length (0 for a product with no passing candidate at
+// all, including every 'unresolved' one) — used for the ">=3 verified" /
+// per-resolution stats below, NOT for the "after" row of the table.
 const afterN = (p) => {
+  if (p.resolution === "unresolved") return 0;
   try {
     return JSON.parse(p.final_gallery_json || "[]").length;
   } catch {
     return 0;
   }
 };
-const after = dist(afterN);
+// What actually ships in image-pipeline/proposed/ and what a customer sees:
+// 05-build-dataset.mjs NEVER blanks a product — an 'unresolved' product keeps
+// its pre-existing image/gallery exactly as-is. So the real "after" count for
+// an unresolved product is its ORIGINAL count, not 0. Every category here is
+// mutually exclusive and sums to `prods.length` (no product can be both
+// counted and left out, and nothing lands in a phantom "0" bucket — no
+// product in this catalog ever had 0 images to begin with).
+const realAfterN = (p) => (p.resolution === "unresolved" ? (p.current_image_count || 0) : afterN(p));
+const after = dist(realAfterN);
+const afterSum = Object.values(after).reduce((a, b) => a + b, 0);
 
 const candWhere = brand
   ? "WHERE sku IN (SELECT sku FROM products WHERE brand_key = ?)"
@@ -63,7 +76,11 @@ const byRes = {};
 for (const p of prods) byRes[p.resolution || "not_run"] = (byRes[p.resolution || "not_run"] || 0) + 1;
 const unresolved = prods.filter((p) => p.resolution === "unresolved");
 const singles = prods.filter((p) => p.resolution === "verified_single_image");
-const hit3 = prods.filter((p) => afterN(p) >= 3).length;
+const multi = prods.filter((p) => p.resolution === "official_multi");
+const verifiedTwo = multi.filter((p) => afterN(p) === 2);
+const verifiedThreePlus = multi.filter((p) => afterN(p) >= 3);
+const hit3 = verifiedThreePlus.length;
+const needsMedia = unresolved.length + singles.length + verifiedTwo.length; // verified official count < 3
 const thumbsReplaced = prods.filter((p) => {
   const c = p.current_image || "";
   const f = p.final_image || "";
@@ -83,14 +100,27 @@ _Generated ${new Date().toISOString()} from \`image-pipeline/pipeline.db\`._
 
 ### Images per product
 
+Real customer-facing gallery size — an \`unresolved\` product's *original* image/gallery is
+kept unchanged (05-build-dataset.mjs never blanks a product), so it is counted at its
+original size here, not as 0. Every product appears in exactly one column; before and
+after both sum to **${prods.length}**${afterSum === prods.length ? "" : `  ⚠ after-sum=${afterSum}, expected ${prods.length}`}.
+
 | images |     0 |     1 |     2 |     3 |     4 |    5+ |
 |--------|------:|------:|------:|------:|------:|------:|
 | before |${row(before)} |
 | after  |${row(after)} |
 
+### Verification status (why each product landed where it did)
+
+| status | count | meaning |
+|---|---:|---|
+| \`official_multi\`, 3+ verified images | ${verifiedThreePlus.length} | fully resolved — 3 or more genuine manufacturer images verified |
+| \`official_multi\`, exactly 2 verified images | ${verifiedTwo.length} | partially resolved — 2 verified images, needs 1 more |
+| \`verified_single_image\` | ${singles.length} | only 1 genuine manufacturer image exists/verified for this exact SKU |
+| \`unresolved\` — current image retained | ${unresolved.length} | 0 verified — no source image passed exact-SKU checks; the pre-existing catalog image/gallery is kept as-is, unchanged |
+
 - Products now with **≥ 3 verified unique images**: **${hit3}**
-- Products **\`verified_single_image\`**: **${singles.length}**
-- Products **unresolved** (no verified exact-SKU image): **${unresolved.length}**
+- **Products needing more official media (verified count < 3): ${needsMedia}** = ${unresolved.length} unresolved + ${singles.length} single-image + ${verifiedTwo.length} two-image
 
 ### Image work
 
@@ -149,8 +179,10 @@ const nearDupRows = rc(
 writeFileSync(join(OUT, `${label}-near-duplicate-review.csv`),
   csv(nearDupRows, ["sku", "url", "width", "height", "match_json"]));
 
-const counts = { products: prods.length, before, after, verifiedImgs, unresolved: unresolved.length,
-  verified_single_image: singles.length, hit3plus: hit3, retailer_held: retailerHeld.length };
+const counts = { products: prods.length, before, after, afterSum, verifiedImgs, unresolved: unresolved.length,
+  verified_single_image: singles.length, verified_two_image: verifiedTwo.length,
+  verified_three_plus: verifiedThreePlus.length, needs_media: needsMedia,
+  hit3plus: hit3, retailer_held: retailerHeld.length };
 finishRun(db, runId, counts);
 console.log(md);
 console.log(`\nwrote reports/ for ${label}`);
