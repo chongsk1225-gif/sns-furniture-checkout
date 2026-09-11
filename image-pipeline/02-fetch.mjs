@@ -15,6 +15,7 @@ import { openDb, startRun, finishRun, installShutdown, integrityOk, acquireLock,
 import { politeFetch, pool } from "./lib/ratelimit.mjs";
 import { imageMeta } from "./lib/imagemeta.mjs";
 import { nowIso, parseArgs } from "./lib/util.mjs";
+import { foaVariants } from "./lib/sources.mjs";
 
 process.on("unhandledRejection", (e) => console.error("UNHANDLED_REJECTION", e && e.stack ? e.stack : e));
 process.on("uncaughtException", (e) => console.error("UNCAUGHT", e && e.stack ? e.stack : e));
@@ -114,9 +115,21 @@ installShutdown(db, () => {
 await pool(rows, CONCURRENCY, async (row) => {
   try {
     const url = row.resolved_url || row.original_url;
-    const r = await politeFetch(url, { timeoutMs: 30000 });
+    let r = await politeFetch(url, { timeoutMs: 30000 });
+    // Some FOA CDN "original" (un-cached) paths permanently 403 even though the
+    // manufacturer's own cache-transformed image at the same hash exists and
+    // works fine — fall back to the 465x465 cache render (still clears the
+    // 400px MIN_SIDE floor) rather than losing the image entirely.
+    let usedUrl = url;
+    if (r.status === 403 && row.origin === "foa_cdn_upgrade") {
+      const card = foaVariants(row.original_url).card;
+      if (card && card !== url) {
+        const r2 = await politeFetch(card, { timeoutMs: 30000 });
+        if (r2.ok && r2.buffer) { r = r2; usedUrl = card; }
+      }
+    }
     const rec = {
-      id: row.id, resolved_url: r.finalUrl || url,
+      id: row.id, resolved_url: r.finalUrl || usedUrl,
       http_status: r.status || null, content_type: null, bytes: null,
       width: null, height: null, sha256: null, phash: null,
       status: "error", reject_reason: null, last_error: r.error || null, fetched_at: nowIso(),
