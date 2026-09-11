@@ -1,8 +1,17 @@
 // Phase 02 — resumable, rate-limited fetch of candidate images. Re-run to continue.
-//   node 02-fetch.mjs --brand acme [--limit N] [--sku SKU] [--origin acme_feed] [--retry-errors]
-// Processes candidate_images with status in ('pending') (+ 'error' with --retry-errors).
-// FOA page scraping is handled by 02-fetch-foa-pages.mjs (Milestone 2), not here.
-import { openDb, startRun, finishRun, installShutdown, integrityOk } from "./lib/db.mjs";
+//   node 02-fetch.mjs --brand acme [--limit N] [--sku SKU] [--origin acme_feed]
+//                     [--concurrency N] [--retry-errors] [--force]
+// Processes candidate_images with status 'pending' (+ 'error' with --retry-errors).
+// FOA product-page scraping is a separate script (Milestone 2), not here.
+//
+// Concurrency model (post-corruption hardening):
+//   * a single OS lock file (.pipeline.lock) => only ONE mutating phase at a time
+//   * bounded network concurrency (default 6) via pool()
+//   * ONE serialized writer: workers append results to an in-memory buffer;
+//     flush() drains it inside a single BEGIN/COMMIT every FLUSH_EVERY rows or
+//     FLUSH_MS ms, with SQLITE_BUSY retry. No worker ever writes directly.
+//   * clean shutdown flushes the buffer and finalizes the run row.
+import { openDb, startRun, finishRun, installShutdown, integrityOk, acquireLock, withWriteRetry } from "./lib/db.mjs";
 import { politeFetch, pool } from "./lib/ratelimit.mjs";
 import { imageMeta } from "./lib/imagemeta.mjs";
 import { nowIso, parseArgs } from "./lib/util.mjs";
@@ -12,10 +21,17 @@ process.on("uncaughtException", (e) => console.error("UNCAUGHT", e && e.stack ? 
 
 const args = parseArgs(process.argv.slice(2));
 const LIMIT = args.limit ? Number(args.limit) : Infinity;
-const CONCURRENCY = args.concurrency ? Number(args.concurrency) : 6;
+const CONCURRENCY = Math.max(1, Math.min(12, args.concurrency ? Number(args.concurrency) : 6));
+const FLUSH_EVERY = 100;   // rows
+const FLUSH_MS = 4000;     // ms
+
+const releaseLock = acquireLock({ force: !!args.force, label: `02-fetch ${args.brand || ""} pid${process.pid}` });
+
 const db = openDb();
-installShutdown(db);
-if (!integrityOk(db)) { console.error("FATAL: pipeline.db failed integrity_check — rebuild with 01-seed"); process.exit(2); }
+if (!integrityOk(db)) {
+  console.error("FATAL: pipeline.db failed integrity_check — rebuild with 01-seed + salvage before fetching.");
+  process.exit(2);
+}
 const runId = startRun(db, "02-fetch", args);
 
 let where = "status = 'pending'";
@@ -30,7 +46,7 @@ const rows = db
   .prepare(`SELECT id, sku, origin, original_url, resolved_url, attempts FROM candidate_images WHERE ${where} ORDER BY sku LIMIT ?`)
   .all(...params, Number.isFinite(LIMIT) ? LIMIT : -1);
 
-console.log(`to fetch: ${rows.length}  (concurrency ${CONCURRENCY})`);
+console.log(`to fetch: ${rows.length}  (net concurrency ${CONCURRENCY}, flush ${FLUSH_EVERY}/${FLUSH_MS}ms)`);
 
 const upd = db.prepare(`
   UPDATE candidate_images SET
@@ -44,57 +60,122 @@ const upd = db.prepare(`
 let done = 0, ok = 0, broken = 0, notimg = 0, errored = 0;
 const t0 = Date.now();
 
-await pool(rows, CONCURRENCY, async (row) => {
- try {
-  const url = row.resolved_url || row.original_url;
-  const r = await politeFetch(url, { timeoutMs: 30000 });
-  const rec = {
-    id: row.id, resolved_url: r.finalUrl || url,
-    http_status: r.status || null, content_type: null, bytes: null,
-    width: null, height: null, sha256: null, phash: null,
-    status: "error", reject_reason: null, last_error: r.error || null, fetched_at: nowIso(),
-  };
+// ---- serialized single writer -------------------------------------------
+let buf = [];
+let lastFlush = Date.now();
+let flushing = false;
 
-  if (r.error === "not_found" || r.status === 404 || r.status === 410) {
-    rec.status = "rejected"; rec.reject_reason = "broken_url"; broken++;
-  } else if (!r.ok || !r.buffer) {
-    rec.status = "error"; errored++;
-  } else {
-    rec.content_type = r.contentType || null;
-    rec.bytes = r.buffer.length;
-    const isImg = /^image\//i.test(r.contentType || "") || /\.(jpe?g|png|webp)(\?|$)/i.test(url);
-    if (!isImg && /text\/html/i.test(r.contentType || "")) {
-      rec.status = "rejected"; rec.reject_reason = "not_an_image"; notimg++;
-    } else {
+function flush(finalize = false) {
+  if (flushing) return;           // reentrancy guard (single-threaded, but be safe)
+  if (buf.length === 0) return;
+  flushing = true;
+  const batch = buf;
+  buf = [];
+  try {
+    withWriteRetry(() => {
+      db.exec("BEGIN IMMEDIATE");
       try {
-        const m = await imageMeta(r.buffer);
-        rec.width = m.width; rec.height = m.height; rec.sha256 = m.sha256; rec.phash = m.phash;
-        if (!m.width || !m.height) {
-          rec.status = "rejected"; rec.reject_reason = "undecodable"; notimg++;
-        } else {
-          rec.status = "fetched"; ok++;
-        }
-        if (m.decodeError) rec.last_error = m.decodeError;
+        for (const rec of batch) upd.run(rec);
+        db.exec("COMMIT");
       } catch (e) {
-        rec.status = "error"; rec.last_error = "meta:" + (e.message || e); errored++;
+        try { db.exec("ROLLBACK"); } catch {}
+        throw e;
       }
-    }
+    });
+  } catch (e) {
+    // put the batch back so a later flush / shutdown retries it
+    buf = batch.concat(buf);
+    console.error("FLUSH_ERROR (will retry):", String(e && e.message || e));
+    flushing = false;
+    if (!finalize) return;
+    throw e;
   }
+  lastFlush = Date.now();
+  flushing = false;
+}
 
-  upd.run(rec);
-  done++;
-  if (done % 200 === 0) {
-    const rate = (done / ((Date.now() - t0) / 1000)).toFixed(1);
-    console.log(`  ${done}/${rows.length}  ok=${ok} broken=${broken} notimg=${notimg} err=${errored}  ${rate}/s`);
-  }
- } catch (err) {
-  console.error("WORKER_ERR", row.id, String(err && err.message ? err.message : err));
-  try { db.prepare("UPDATE candidate_images SET status='error', last_error=?, attempts=attempts+1 WHERE id=?").run(String(err).slice(0, 300), row.id); } catch {}
- }
+function maybeFlush() {
+  if (buf.length >= FLUSH_EVERY || Date.now() - lastFlush >= FLUSH_MS) flush();
+}
+
+const counts = () => ({
+  attempted: done, fetched_ok: ok, broken_url: broken, not_image: notimg, errors: errored,
+  remaining_pending: db.prepare(
+    "SELECT COUNT(*) n FROM candidate_images WHERE status='pending' AND origin!='foa_page'",
+  ).get().n,
 });
 
-const counts = { attempted: done, fetched_ok: ok, broken_url: broken, not_image: notimg, errors: errored,
-  remaining_pending: db.prepare("SELECT COUNT(*) n FROM candidate_images WHERE status='pending' AND origin!='foa_page'").get().n };
-finishRun(db, runId, counts);
-console.log(JSON.stringify(counts, null, 2));
+installShutdown(db, () => {
+  try { flush(true); } catch {}
+  try { finishRun(db, runId, { ...counts(), interrupted: true }); } catch {}
+  try { releaseLock(); } catch {}
+});
+
+await pool(rows, CONCURRENCY, async (row) => {
+  try {
+    const url = row.resolved_url || row.original_url;
+    const r = await politeFetch(url, { timeoutMs: 30000 });
+    const rec = {
+      id: row.id, resolved_url: r.finalUrl || url,
+      http_status: r.status || null, content_type: null, bytes: null,
+      width: null, height: null, sha256: null, phash: null,
+      status: "error", reject_reason: null, last_error: r.error || null, fetched_at: nowIso(),
+    };
+
+    if (r.error === "not_found" || r.status === 404 || r.status === 410) {
+      rec.status = "rejected"; rec.reject_reason = "broken_url"; broken++;
+    } else if (!r.ok || !r.buffer) {
+      rec.status = "error"; errored++;
+    } else {
+      rec.content_type = r.contentType || null;
+      rec.bytes = r.buffer.length;
+      const isImg = /^image\//i.test(r.contentType || "") || /\.(jpe?g|png|webp)(\?|$)/i.test(url);
+      if (!isImg && /text\/html/i.test(r.contentType || "")) {
+        rec.status = "rejected"; rec.reject_reason = "not_an_image"; notimg++;
+      } else {
+        try {
+          const m = await imageMeta(r.buffer);
+          rec.width = m.width; rec.height = m.height; rec.sha256 = m.sha256; rec.phash = m.phash;
+          if (!m.width || !m.height) {
+            rec.status = "rejected"; rec.reject_reason = "undecodable"; notimg++;
+          } else {
+            rec.status = "fetched"; ok++;
+          }
+          if (m.decodeError) rec.last_error = m.decodeError;
+        } catch (e) {
+          rec.status = "error"; rec.last_error = "meta:" + (e.message || e); errored++;
+        }
+      }
+    }
+
+    buf.push(rec);
+    done++;
+    maybeFlush();
+    if (done % 200 === 0) {
+      const rate = (done / ((Date.now() - t0) / 1000)).toFixed(1);
+      console.log(`  ${done}/${rows.length}  ok=${ok} broken=${broken} notimg=${notimg} err=${errored}  ${rate}/s  buf=${buf.length}`);
+    }
+  } catch (err) {
+    console.error("WORKER_ERR", row.id, String(err && err.message ? err.message : err));
+    buf.push({
+      id: row.id, resolved_url: row.resolved_url || row.original_url,
+      http_status: null, content_type: null, bytes: null, width: null, height: null,
+      sha256: null, phash: null, status: "error", reject_reason: null,
+      last_error: String(err).slice(0, 300), fetched_at: nowIso(),
+    });
+    done++;
+    errored++;
+    maybeFlush();
+  }
+});
+
+// drain anything left, with a couple of forced retries
+for (let i = 0; i < 5 && buf.length; i++) {
+  try { flush(true); } catch { await new Promise((r) => setTimeout(r, 500)); }
+}
+
+const final = counts();
+finishRun(db, runId, final);
+console.log(JSON.stringify(final, null, 2));
+try { releaseLock(); } catch {}
 db.close();

@@ -2,10 +2,11 @@
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { existsSync } from "node:fs";
+import { existsSync, openSync, closeSync, writeSync, readFileSync, unlinkSync } from "node:fs";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 export const DB_PATH = join(ROOT, "pipeline.db");
+export const LOCK_PATH = join(ROOT, ".pipeline.lock");
 
 let _openHandles = [];
 
@@ -23,6 +24,68 @@ export function openDb() {
   return db;
 }
 
+/** True if a process with this pid is currently alive. */
+function pidAlive(pid) {
+  if (!pid || Number.isNaN(pid)) return false;
+  try { process.kill(pid, 0); return true; }
+  catch (e) { return e.code === "EPERM"; } // exists but not signallable
+}
+
+/**
+ * Single-writer guard. Only ONE mutating pipeline phase (02-fetch / 03-verify)
+ * may touch pipeline.db at a time — concurrent writers are what corrupted the
+ * B-tree previously. Returns a release() fn; auto-releases on process exit.
+ * Pass { force:true } to steal the lock (also happens automatically if the
+ * recorded pid is dead => stale lock).
+ */
+export function acquireLock({ force = false, label = "" } = {}) {
+  if (force) { try { unlinkSync(LOCK_PATH); } catch {} }
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const fd = openSync(LOCK_PATH, "wx"); // fails if it already exists
+      writeSync(fd, JSON.stringify({ pid: process.pid, label, at: new Date().toISOString() }));
+      closeSync(fd);
+      const release = () => { try { unlinkSync(LOCK_PATH); } catch {} };
+      process.once("exit", release);
+      return release;
+    } catch (e) {
+      if (e.code !== "EEXIST") throw e;
+      let info = {};
+      try { info = JSON.parse(readFileSync(LOCK_PATH, "utf8")); } catch {}
+      if (!pidAlive(Number(info.pid))) {
+        // stale lock from a dead process — reclaim it
+        try { unlinkSync(LOCK_PATH); } catch {}
+        continue;
+      }
+      throw new Error(
+        `pipeline.db is locked by another running phase (pid ${info.pid}, ${info.label || "?"}, since ${info.at || "?"}).\n` +
+        `Wait for it to finish, or re-run with --force if you are certain it is dead.`,
+      );
+    }
+  }
+  throw new Error("could not acquire pipeline lock");
+}
+
+/** Synchronous sleep (keeps the single-writer model simple inside retry loops). */
+function sleepSync(ms) {
+  try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); } catch { /* SAB unavailable */ }
+}
+
+/** Run a write fn, retrying transient SQLITE_BUSY / "database is locked". */
+export function withWriteRetry(fn, { tries = 6, baseMs = 150 } = {}) {
+  for (let i = 0; ; i++) {
+    try { return fn(); }
+    catch (e) {
+      const msg = String((e && e.message) || e);
+      if (i < tries && /SQLITE_BUSY|database is locked|database table is locked/i.test(msg)) {
+        sleepSync(baseMs * 2 ** i);
+        continue;
+      }
+      throw e;
+    }
+  }
+}
+
 /** Verify the DB isn't corrupt. Returns true if OK. */
 export function integrityOk(db) {
   try {
@@ -33,9 +96,17 @@ export function integrityOk(db) {
   }
 }
 
-/** Register clean shutdown so an interrupted run leaves a consistent file. */
-export function installShutdown(db) {
+/**
+ * Register clean shutdown so an interrupted run leaves a consistent file.
+ * `onBeforeClose` (optional) runs first — use it to flush a pending write
+ * batch and finalize the run row before the handle closes.
+ */
+export function installShutdown(db, onBeforeClose) {
+  let done = false;
   const close = () => {
+    if (done) return;
+    done = true;
+    try { if (typeof onBeforeClose === "function") onBeforeClose(); } catch (e) { console.error("shutdown flush failed:", e && e.message); }
     try { db.close(); } catch {}
   };
   for (const sig of ["SIGINT", "SIGTERM", "SIGHUP", "SIGBREAK"]) {

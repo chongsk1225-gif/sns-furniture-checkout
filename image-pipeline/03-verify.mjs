@@ -1,12 +1,13 @@
 // Phase 03 — verify + classify fetched candidates, dedup, build each product's gallery. No network.
 //   node 03-verify.mjs --brand acme [--sku SKU]
-import { openDb, startRun, finishRun, installShutdown, integrityOk } from "./lib/db.mjs";
+import { openDb, startRun, finishRun, installShutdown, integrityOk, acquireLock } from "./lib/db.mjs";
 import { hamming, normSku, skuVariants, nowIso, parseArgs } from "./lib/util.mjs";
 import { kindRank } from "./lib/sources.mjs";
 
 const args = parseArgs(process.argv.slice(2));
+const releaseLock = acquireLock({ force: !!args.force, label: `03-verify ${args.brand || ""} pid${process.pid}` });
 const db = openDb();
-installShutdown(db);
+installShutdown(db, () => { try { releaseLock(); } catch {} });
 if (!integrityOk(db)) { console.error("FATAL: pipeline.db failed integrity_check — rebuild with 01-seed"); process.exit(2); }
 const runId = startRun(db, "03-verify", args);
 
@@ -14,7 +15,7 @@ const MIN_SIDE = 400;
 const PREFER_SIDE = 800;
 const PHASH_DUP = 4;           // near-certain visual duplicate
 const PHASH_DUP_SAMEDIM = 10;  // + identical dimensions + near-identical byte size (re-compression)
-const PHASH_REVIEW = 10;       // 5..10 without a size match — keep BOTH, flag for human review
+const PHASH_REVIEW = 10;       // 5..10 without a size match → keep BOTH, flag for human review
 
 let pwhere = "1=1";
 const pp = [];
@@ -213,4 +214,5 @@ db.exec("COMMIT");
 
 finishRun(db, runId, stats);
 console.log(JSON.stringify(stats, null, 2));
+try { releaseLock(); } catch {}
 db.close();
