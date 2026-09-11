@@ -43,6 +43,21 @@ export function skuVariants(sku) {
   // drop a trailing bare kit/variant letter or "KIT"/"_KIT"
   const noKit = up.replace(/_?KIT$/i, "").replace(/([0-9])[A-Z]$/i, "$1");
   if (noKit !== up && noKit.length >= 4) set.add(normSku(noKit));
+  // Iteratively strip a CHAIN of trailing dash-segments that each look like a
+  // quantity/pack/config qualifier rather than a color/model token — e.g.
+  // `CM-BR6252BG-24-2PK` -> base `CM-BR6252BG` (the "-24-2PK" is a pack-count/
+  // set-size suffix; the color code BG is already inside the base). Only pure
+  // numbers or a short known qualifier shape count as strippable — a real
+  // color/finish/model segment (letters mixed with digits beyond a small
+  // known list) stops the strip, so this never eats into the actual SKU body.
+  const QUALIFIER = /^(\d{1,4}|[0-9]*PC|[0-9]*PK|CK|EK|QN?|F|FL|T|TW|TXL|KN?|SET|CT|EA|KIT)$/i;
+  const parts = up.split("-");
+  let cut = parts.length;
+  while (cut > 1 && QUALIFIER.test(parts[cut - 1])) cut--;
+  if (cut < parts.length) {
+    const base = parts.slice(0, cut).join("-");
+    if (base.length >= 4) set.add(normSku(base));
+  }
   return [...set].filter(Boolean);
 }
 
