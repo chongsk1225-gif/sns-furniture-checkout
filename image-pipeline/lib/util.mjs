@@ -26,15 +26,30 @@ export function normSku(s) {
   return String(s || "").toUpperCase().replace(/[\s._/-]+/g, "");
 }
 
-/** Tokens that could stand in for a SKU inside an image filename. */
+/**
+ * Tokens that could stand in for a SKU inside an image filename.
+ * ACME/FOA both file a lettered "kit/variant" SKU (e.g. `04084A`, `12248KIT`,
+ * `91110_KIT`) under the manufacturer's BASE item number (`04084`, `12248`,
+ * `91110`) — a documented, harmless suffix, not a different product. We accept
+ * the base-number match but this is logged in match_json for review.
+ */
 export function skuVariants(sku) {
   const raw = String(sku || "").trim();
   const up = raw.toUpperCase();
   const set = new Set([up, normSku(up), up.replace(/-/g, "_"), up.replace(/-/g, "")]);
-  // drop a trailing size/config suffix like -CK / -EK / -Q / -F / -T / -2PC for a looser (still logged) check
-  const noSuffix = up.replace(/-(CK|EK|Q|QN|F|FL|T|TW|TXL|K|KN|2PC|3PC|SET|PK|PC)$/i, "");
-  if (noSuffix !== up) set.add(normSku(noSuffix));
+  // drop a trailing size/config suffix like -CK / -EK / -Q / -F / -T / -2PC
+  const noSizeSuffix = up.replace(/-(CK|EK|Q|QN|F|FL|T|TW|TXL|K|KN|2PC|3PC|SET|PK|PC)$/i, "");
+  if (noSizeSuffix !== up) set.add(normSku(noSizeSuffix));
+  // drop a trailing bare kit/variant letter or "KIT"/"_KIT"
+  const noKit = up.replace(/_?KIT$/i, "").replace(/([0-9])[A-Z]$/i, "$1");
+  if (noKit !== up && noKit.length >= 4) set.add(normSku(noKit));
   return [...set].filter(Boolean);
+}
+
+/** Manufacturer cross-reference the record's own name asserts, e.g. "(Same AC00899)". */
+export function nameAliasTokens(name) {
+  const m = String(name || "").match(/\bsame\s*[:#]?\s*([a-z0-9][a-z0-9-]{2,})\b/i);
+  return m ? [normSku(m[1])] : [];
 }
 
 export function hostOf(url) {

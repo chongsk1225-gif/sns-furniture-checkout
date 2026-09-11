@@ -3,7 +3,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { openDb, startRun, finishRun } from "./lib/db.mjs";
+import { openDb, startRun, finishRun, installShutdown, acquireLock } from "./lib/db.mjs";
 import { parseArgs } from "./lib/util.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -12,7 +12,9 @@ mkdirSync(OUT, { recursive: true });
 const args = parseArgs(process.argv.slice(2));
 const brand = args.brand || null;
 const label = brand ? brand.toUpperCase() : "ALL";
+const releaseLock = acquireLock({ force: !!args.force, label: `04-report ${brand || "all"} pid${process.pid}` });
 const db = openDb();
+installShutdown(db, () => { try { releaseLock(); } catch {} });
 const runId = startRun(db, "04-report", args);
 
 const pWhere = brand ? "WHERE brand_key = ?" : "";
@@ -152,4 +154,5 @@ const counts = { products: prods.length, before, after, verifiedImgs, unresolved
 finishRun(db, runId, counts);
 console.log(md);
 console.log(`\nwrote reports/ for ${label}`);
+try { releaseLock(); } catch {}
 db.close();

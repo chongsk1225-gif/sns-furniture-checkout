@@ -4,7 +4,7 @@
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { openDb, startRun, finishRun } from "./lib/db.mjs";
+import { openDb, startRun, finishRun, installShutdown, acquireLock } from "./lib/db.mjs";
 import { parseArgs } from "./lib/util.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -13,7 +13,13 @@ const OUT = join(HERE, "proposed");
 const OUTD = join(OUT, "data");
 const args = parseArgs(process.argv.slice(2));
 const brand = args.brand || null;
+// NOTE: this rebuild is brand-filtered — running --brand acme then --brand foa
+// separately would have the second run overwrite the first's output with
+// unfiltered (unfixed) rows for the other brand. Run brand-unfiltered once
+// both manufacturers are verified for the combined proposed/ dataset.
+const releaseLock = acquireLock({ force: !!args.force, label: `05-build ${brand || "all"} pid${process.pid}` });
 const db = openDb();
+installShutdown(db, () => { try { releaseLock(); } catch {} });
 const runId = startRun(db, "05-build", args);
 
 rmSync(OUTD, { recursive: true, force: true });
@@ -124,4 +130,5 @@ writeFileSync(join(OUT, "DIFF-SUMMARY.md"), diff);
 const counts = { changedIndex, changedDetail, multi, singles, unresolved };
 finishRun(db, runId, counts);
 console.log(diff);
+try { releaseLock(); } catch {}
 db.close();

@@ -1,7 +1,7 @@
 // Phase 03 — verify + classify fetched candidates, dedup, build each product's gallery. No network.
 //   node 03-verify.mjs --brand acme [--sku SKU]
 import { openDb, startRun, finishRun, installShutdown, integrityOk, acquireLock } from "./lib/db.mjs";
-import { hamming, normSku, skuVariants, nowIso, parseArgs } from "./lib/util.mjs";
+import { hamming, normSku, skuVariants, nameAliasTokens, nowIso, parseArgs } from "./lib/util.mjs";
 import { kindRank } from "./lib/sources.mjs";
 
 const args = parseArgs(process.argv.slice(2));
@@ -56,10 +56,10 @@ function isResaveSiblingOf(url, otherUrls) {
   const m = b.match(/^(.+)_1$/);
   return m ? otherUrls.has(m[1]) : false;
 }
-function skuTokensInFile(sku, url) {
+function skuTokensInFile(sku, url, extraAliasTokens = []) {
   const file = (url.split("/").pop() || "").toLowerCase().replace(/\.(jpe?g|png)$/, "");
   const parts = file.split(/[_-]/).filter(Boolean);
-  const vs = new Set(skuVariants(sku).map((v) => normSku(v).toLowerCase()));
+  const vs = new Set([...skuVariants(sku), ...extraAliasTokens].map((v) => normSku(v).toLowerCase()));
   return parts.filter((p) => vs.has(normSku(p).toLowerCase()));
 }
 
@@ -71,6 +71,7 @@ db.exec("BEGIN");
 for (const p of products) {
   const cands = getCands.all(p.sku);
   const evaluated = [];
+  const aliasTokens = nameAliasTokens(p.name); // e.g. name says "(Same AC00899)"
 
   for (const c of cands) {
     const url = c.resolved_url || c.original_url;
@@ -79,13 +80,16 @@ for (const p of products) {
     const long = Math.max(w || 0, h || 0);
     const ar = aspect(w, h);
     if (kind !== "diagram" && kind !== "lifestyle" && ar > 2.2) kind = "diagram"; // dimension strips / banners
-    const tokensInFile = skuTokensInFile(p.sku, url);
+    const tokensInFile = skuTokensInFile(p.sku, url, aliasTokens);
+    const viaAlias = aliasTokens.length > 0 && tokensInFile.some((t) => aliasTokens.includes(normSku(t)));
     const inUrl = c.sku_token_in_url === 1 || tokensInFile.length > 0;
     const isCombo = tokensInFile.length >= 2 || kind === "combo";
 
     const ev = {
       manufacturer: c.rights_class === "official_manufacturer" ? "official (host)" : c.rights_class,
-      exact_sku: inUrl ? "sku token present in filename/URL"
+      exact_sku: viaAlias
+        ? `manufacturer name cross-reference confirms alias to "${aliasTokens[0]}" — image accepted under that model number`
+        : inUrl ? "sku token present in filename/URL (incl. documented base-number/kit suffix)"
         : isCombo ? "set/combo photo — this SKU is one token"
         : "SKU token NOT in filename",
       name_collection: `${p.name || ""} / ${p.collection || ""} (manufacturer-feed asserted)`,
