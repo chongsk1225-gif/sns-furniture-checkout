@@ -1,0 +1,19 @@
+{
+  "name": "sns-furniture-checkout",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "SNS Furniture (snsfurniture.com) catalog site + Authorize.Net Accept Hosted checkout Worker.",
+  "scripts": {
+    "build:pricing": "node scripts/build-pricing-index.mjs",
+    "prebuild": "node scripts/build-pricing-index.mjs",
+    "build": "node scripts/build-pricing-index.mjs",
+    "dev": "npm run build:pricing && wrangler dev",
+    "regression": "node scripts/regression-check.mjs",
+    "migrate:local": "wrangler d1 migrations apply sns-furniture-orders --local",
+    "migrate:staging": "wrangler d1 migrations apply sns-furniture-orders-staging --env staging --remote"
+  },
+  "devDependencies": {
+    "wrangler": "^4.130.0"
+  }
+}

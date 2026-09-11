@@ -1,0 +1,15 @@
+{
+  "products": 13,
+  "unique_images": 13,
+  "categories": {
+    "Accent Furniture": 2,
+    "Bedroom": 3,
+    "Dining Room": 4,
+    "Living Room": 3,
+    "Mattresses": 1
+  },
+  "view_details_target_exists": true,
+  "duplicate_js_pricing_declaration": 1,
+  "promo_on_home": 4,
+  "logo_type": "SVG"
+}

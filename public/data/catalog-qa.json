@@ -1,0 +1,26 @@
+{
+  "generated": "2026-09-09",
+  "products": 9369,
+  "brands": {
+    "ACME Furniture": 3708,
+    "Furniture of America": 5661
+  },
+  "categories": {
+    "Bedroom": 2526,
+    "Dining Room": 1546,
+    "Living Room": 2055,
+    "Mattresses": 71,
+    "Youth": 396,
+    "Accent Furniture": 2540,
+    "Office": 207,
+    "Outdoor": 23,
+    "Other": 5
+  },
+  "multiple_images": 3651,
+  "single_image": 5718,
+  "official_msrp_verified": 9369,
+  "foa_excluded": {
+    "duplicate_sku": 1
+  },
+  "pricing_rule": "Sale Price = official manufacturer MSRP; Was Price = MSRP x 1.30"
+}

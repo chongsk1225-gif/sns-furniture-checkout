@@ -1,0 +1,24 @@
+# Secrets — NEVER commit. Real credentials live only here locally and in Cloudflare's encrypted store.
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+
+# Tooling
+node_modules/
+.wrangler/
+*.log
+
+# Image pipeline — local working state, not source
+image-pipeline/node_modules/
+image-pipeline/pipeline.db
+image-pipeline/pipeline.db-*
+image-pipeline/.pipeline.lock
+image-pipeline/backups/
+image-pipeline/salvage-*.json
+image-pipeline/cache/
+image-pipeline/proposed/
+image-pipeline/reports/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,15 @@
+{
+  "html_pages": 11,
+  "products_in_schema_capable_catalog": 13,
+  "required_files_present": {
+    "robots.txt": true,
+    "sitemap.xml": true,
+    "llms.txt": true,
+    "ai.txt": true,
+    "site.webmanifest": true
+  },
+  "broken_internal_links": [],
+  "home_has_faq_schema": true,
+  "home_has_local_business_schema": true,
+  "product_has_dynamic_product_schema": true
+}
