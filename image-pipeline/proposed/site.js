@@ -46,6 +46,13 @@ const SUBSECTIONS_BY_ROOM={
  'Office':['Desks','Desk Chairs','Bookshelves & File Cabinets','Music Studio','Gaming Tables'],
  'Youth':['Bunk Beds','Beds','Kids Bedroom Sets','Daybeds & Trundles','Other'],
 };
+// A subsection can pull in a whole SEPARATE top-level category instead of
+// filtering within the room's own products — Bedroom's "Mattresses" tab
+// means the products actually filed under the top-level "Mattresses"
+// category (a sibling category, not a Bedroom type value). Must match
+// image-pipeline/lib/subsections.mjs's CROSS_CATEGORY exactly.
+const CROSS_CATEGORY_SOURCE={'Bedroom':{'Mattresses':'Mattresses'}};
+function sourceCategoryFor(room,bucket){return (CROSS_CATEGORY_SOURCE[room]||{})[bucket]||room;}
 function slugify(label){return label.toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
 function labelForSlug(room,slug){return (SUBSECTIONS_BY_ROOM[room]||[]).find(l=>slugify(l)===slug)||null;}
 
@@ -64,9 +71,15 @@ function renderSubsectionBar(category){
  const buckets=SUBSECTIONS_BY_ROOM[category];
  if(!buckets){bar.innerHTML='';return;}
  const map=catalogState.subsectionMap||{};
+ // "All" stays scoped to the room's own products only (e.g. Bedroom's All
+ // count does not fold in the cross-category Mattresses products) — only an
+ // explicit bucket click pulls those in.
  const roomItems=catalogState.items.filter(p=>p.category===category);
  const counts={};
- for(const p of roomItems){const b=map[p.sku];if(b)counts[b]=(counts[b]||0)+1;}
+ for(const bucket of buckets){
+  const srcCategory=sourceCategoryFor(category,bucket);
+  counts[bucket]=catalogState.items.reduce((n,p)=>n+(p.category===srcCategory&&map[p.sku]===bucket?1:0),0);
+ }
  const base=location.pathname;
  const allActive=!catalogState.subsection;
  let html=`<a href="${base}" class="subsection-pill${allActive?' active':''}" data-sub="">All (${roomItems.length.toLocaleString()})</a>`;
@@ -128,7 +141,12 @@ function filteredCatalog(){
  const brand=document.getElementById('brandFilter')?.value||'';
  const sort=document.getElementById('sortFilter')?.value||'featured';
  const subMap=catalogState.subsectionMap;
- let data=catalogState.items.filter(p=>(!selectedCategory||p.category===selectedCategory)&&(!brand||p.brand===brand)&&(!catalogState.subsection||(subMap&&subMap[p.sku]===catalogState.subsection))&&(!q||(p.name+' '+p.type+' '+p.sku+' '+p.category+' '+(p.collection||'')+' '+(p.finish||'')).toLowerCase().includes(q)));
+ // A cross-category bucket (Bedroom's Mattresses tab) shows products from a
+ // DIFFERENT category than the room itself — swap the category to match
+ // against for that one filtered view only; every other selection filters
+ // within the room's own category as usual.
+ const effectiveCategory=(catalogState.subsection&&sourceCategoryFor(selectedCategory,catalogState.subsection))||selectedCategory;
+ let data=catalogState.items.filter(p=>(!effectiveCategory||p.category===effectiveCategory)&&(!brand||p.brand===brand)&&(!catalogState.subsection||(subMap&&subMap[p.sku]===catalogState.subsection))&&(!q||(p.name+' '+p.type+' '+p.sku+' '+p.category+' '+(p.collection||'')+' '+(p.finish||'')).toLowerCase().includes(q)));
  if(sort==='price-low')data.sort((a,b)=>(a.sale??Infinity)-(b.sale??Infinity));
  if(sort==='price-high')data.sort((a,b)=>(b.sale??-1)-(a.sale??-1));
  if(sort==='name')data.sort((a,b)=>a.name.localeCompare(b.name));

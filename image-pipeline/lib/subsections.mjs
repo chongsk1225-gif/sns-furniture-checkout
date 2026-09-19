@@ -71,24 +71,48 @@ export const ROOMS = {
   },
 };
 
+// Some subsections pull in a whole SEPARATE top-level catalog category
+// rather than filtering within the room's own `type` field — Bedroom's
+// "Mattresses" tab means the 71 products actually filed under the
+// top-level "Mattresses" category (a sibling category, not a Bedroom type
+// value; no Bedroom-category product has ever had "mattress" in its type).
+// { room: [{ bucket, fromCategory }] } — every product in `fromCategory`
+// is placed straight into `bucket` under `room`, no regex matching at all.
+export const CROSS_CATEGORY = {
+  "Bedroom": [{ bucket: "Mattresses", fromCategory: "Mattresses" }],
+};
+
 function firstMatch(rules, s) {
   for (const [bucket, re] of rules) if (re.test(s)) return bucket;
   return null;
 }
 
-/** Classify one product. Returns null if its category isn't a nav room. */
+/**
+ * Classify one product for room-subsection purposes. Returns null if it
+ * belongs to no nav room and isn't cross-category-pulled into one either.
+ * A product can match here via its OWN category (normal case) or via a
+ * CROSS_CATEGORY rule that pulls a different category's products into a
+ * bucket under a different room (the Mattresses case) — `crossPulled` marks
+ * the latter so callers can tell the two apart if needed.
+ */
 export function classify(product) {
-  const room = product.category;
-  const def = ROOMS[room];
-  if (!def) return null;
-  let bucket = firstMatch(def.rules, product.type || "");
-  let via = "type";
-  if (!bucket && product.name) {
-    bucket = firstMatch(def.rules, product.name);
-    via = "name";
+  const ownRoom = product.category;
+  const def = ROOMS[ownRoom];
+  if (def) {
+    let bucket = firstMatch(def.rules, product.type || "");
+    let via = "type";
+    if (!bucket && product.name) {
+      bucket = firstMatch(def.rules, product.name);
+      via = "name";
+    }
+    if (!bucket) { bucket = def.other || "Other"; via = "none"; }
+    return { room: ownRoom, bucket, flagged: via === "none" && !def.other, via, crossPulled: false };
   }
-  if (!bucket) { bucket = def.other || "Other"; via = "none"; }
-  return { room, bucket, flagged: via === "none" && !def.other, via };
+  for (const [room, pulls] of Object.entries(CROSS_CATEGORY)) {
+    const pull = pulls.find((p) => p.fromCategory === ownRoom);
+    if (pull) return { room, bucket: pull.bucket, flagged: false, via: "cross-category", crossPulled: true };
+  }
+  return null;
 }
 
 export const ROOM_LABELS = {
