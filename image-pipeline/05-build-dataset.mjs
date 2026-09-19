@@ -46,15 +46,25 @@ let changedIndex = 0, changedDetail = 0, singles = 0, unresolved = 0, multi = 0;
 const samples = [];
 
 // ---- catalog-index (card image) ------------------------------------
-const nextIndex = index.map((row) => {
-  const p = bySku.get(String(row.sku));
-  if (!p || !p.resolution || p.resolution === "unresolved" && !p.final_image) return row;
-  if (p.final_card_image && p.final_card_image !== row.image) {
-    changedIndex++;
-    return { ...row, image: p.final_card_image };
-  }
-  return row;
-});
+// A hidden product (e.g. 11-foa-hide-high-risk.mjs) is dropped from the
+// browsable/sellable listing entirely — its detail record is kept (below),
+// just not this array, which is what site.js's catalog grid iterates.
+let hiddenFromIndex = 0;
+const nextIndex = index
+  .filter((row) => {
+    const p = bySku.get(String(row.sku));
+    if (p && p.hidden) { hiddenFromIndex++; return false; }
+    return true;
+  })
+  .map((row) => {
+    const p = bySku.get(String(row.sku));
+    if (!p || !p.resolution || p.resolution === "unresolved" && !p.final_image) return row;
+    if (p.final_card_image && p.final_card_image !== row.image) {
+      changedIndex++;
+      return { ...row, image: p.final_card_image };
+    }
+    return row;
+  });
 writeFileSync(join(OUTD, "catalog-index.json"), JSON.stringify(nextIndex));
 
 // ---- details (main image + gallery + provenance) ------------------
@@ -62,6 +72,16 @@ for (const [fname, arr] of Object.entries(details)) {
   const next = arr.map((rec) => {
     const p = bySku.get(String(rec.sku));
     if (!p || !p.resolution) return rec;
+    if (p.hidden) {
+      // Kept (not deleted) so a direct/saved link still shows product info +
+      // a review notice instead of a raw 404 — but not purchasable: site.js
+      // and product-page.js already render "CHECK PRICE / CHECK AVAILABILITY"
+      // with no Add-to-Cart button whenever sale is null, so this alone
+      // blocks purchase with zero frontend code changes.
+      return { ...rec, sale: null, was: null, hidden: true, needs_review: true,
+        hidden_reason: p.hidden_reason || "",
+        image_verification: { status: p.resolution, hidden: true, wrong_photo_risk: "high", note: p.hidden_reason || "" } };
+    }
     const cands = candFor.all(rec.sku);
     if (p.resolution === "unresolved") {
       unresolved++;
@@ -119,6 +139,7 @@ _Generated ${new Date().toISOString()}. Files live in \`image-pipeline/proposed/
   - \`official_multi\`: ${multi}
   - \`verified_single_image\`: ${singles}
 - detail records left \`unresolved\` (image unchanged / blanked per note): ${unresolved}
+- products hidden (removed from catalog-index, not purchasable): ${hiddenFromIndex}
 
 Review with:  \`node serve-proposed.mjs\`  → http://127.0.0.1:8799/
 
@@ -127,7 +148,7 @@ ${samples.map((s) => `- [${s.sku}] ${s.name} — ${s.brand} / ${s.category} — 
 `;
 writeFileSync(join(OUT, "DIFF-SUMMARY.md"), diff);
 
-const counts = { changedIndex, changedDetail, multi, singles, unresolved };
+const counts = { changedIndex, changedDetail, multi, singles, unresolved, hiddenFromIndex };
 finishRun(db, runId, counts);
 console.log(diff);
 try { releaseLock(); } catch {}

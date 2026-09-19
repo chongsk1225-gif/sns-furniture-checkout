@@ -177,6 +177,16 @@ function migrate(db) {
       phase       TEXT, args TEXT, started_at TEXT, finished_at TEXT, counts_json TEXT
     );
   `);
+  // Added later than the tables above — safe/idempotent column adds so an
+  // existing pipeline.db from before this feature picks them up on next open.
+  // `hidden` is independent of `resolution`/SKU verification: it means "don't
+  // show or sell this on the live site", not "the image failed a check".
+  for (const stmt of [
+    "ALTER TABLE products ADD COLUMN hidden INTEGER DEFAULT 0",
+    "ALTER TABLE products ADD COLUMN hidden_reason TEXT",
+  ]) {
+    try { db.exec(stmt); } catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
+  }
 }
 
 export function startRun(db, phase, args) {
