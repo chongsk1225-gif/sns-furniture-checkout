@@ -1,0 +1,22 @@
+// Deploys ONLY the static catalog (public/) to the same Worker/domain as
+// wrangler.jsonc — deliberately has NO "main" field, so there is no Worker
+// script at all and the Authorize.Net checkout code (src/worker.js) is never
+// bundled or activated. Verified with `wrangler deploy --dry-run`: this
+// config produces "No bindings found" (no D1, no checkout code), vs. the
+// main wrangler.jsonc which always includes the D1 orders binding + worker
+// script even when a plain asset path is passed on the CLI.
+//
+// Use this while checkout is still not approved for production. Once
+// checkout IS approved to go live, switch back to `wrangler deploy` (no
+// -c flag) using the regular wrangler.jsonc instead.
+//
+//   npx wrangler deploy --config wrangler.assets-only.jsonc --dry-run   # check first
+//   npx wrangler deploy --config wrangler.assets-only.jsonc             # deploy
+{
+  "name": "sns-furniture",
+  "compatibility_date": "2026-09-08",
+  "preview_urls": false,
+  "assets": {
+    "directory": "./public"
+  }
+}
