@@ -51,7 +51,7 @@ function toOriginalUrl(smallImageUrl) {
 }
 
 let targets = db
-  .prepare("SELECT sku, current_image FROM products WHERE brand_key='foa' AND resolution='unresolved'")
+  .prepare("SELECT sku, current_image FROM products WHERE brand_key='foa' AND resolution='unresolved' AND (final_image IS NULL OR final_image='')")
   .all()
   .map((p) => ({ sku: p.sku, smallImageUrl: p.current_image, originalUrl: toOriginalUrl(p.current_image) }))
   .filter((t) => t.originalUrl); // only the small_image-cache-pattern ones — the 1,132
