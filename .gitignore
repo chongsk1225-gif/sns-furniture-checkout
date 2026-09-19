@@ -16,7 +16,8 @@ image-pipeline/.pipeline.lock
 image-pipeline/backups/
 image-pipeline/salvage-*.json
 image-pipeline/cache/
-image-pipeline/proposed/
+image-pipeline/proposed/data/
+image-pipeline/proposed/DIFF-SUMMARY.md
 image-pipeline/reports/
 
 # OS

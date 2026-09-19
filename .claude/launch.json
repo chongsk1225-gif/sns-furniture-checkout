@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "serve-proposed",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["image-pipeline/serve-proposed.mjs"],
+      "port": 8799
+    }
+  ]
+}
