@@ -176,6 +176,24 @@ function migrate(db) {
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       phase       TEXT, args TEXT, started_at TEXT, finished_at TEXT, counts_json TEXT
     );
+
+    -- FOA product-page facts for description writing (authorized use of FOA
+    -- content, per user direction — fetched to extract FACTS, source blurb
+    -- kept only as a reference, never republished verbatim).
+    CREATE TABLE IF NOT EXISTS foa_page_facts (
+      sku          TEXT PRIMARY KEY,
+      source_url   TEXT,
+      http_status  INTEGER,
+      fetch_status TEXT,      -- ok | error | no_facts_found
+      last_error   TEXT,
+      std_text     TEXT,      -- FOA's own short-description blurb (reference only)
+      details_json TEXT,      -- {Style, "Color/Finish", Material, "Frame Finish", ...}
+      features_json TEXT,     -- flat tag list from .extra-details
+      dims_json    TEXT,      -- [{piece, dims}] from "Product Dimension"
+      fetched_at   TEXT,
+      attempts     INTEGER DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_foa_facts_status ON foa_page_facts (fetch_status);
   `);
   // Added later than the tables above — safe/idempotent column adds so an
   // existing pipeline.db from before this feature picks them up on next open.
