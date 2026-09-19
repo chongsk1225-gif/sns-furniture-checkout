@@ -47,6 +47,14 @@ function naturalMaterial(material) {
 // or spacing for the same fact (e.g. "Faux Fur Solid Wood, Others" vs
 // "Faux Fur, Solid Wood, Others").
 const normKey = (s) => s.toLowerCase().replace(/[,.\s]+/g, " ").trim();
+// Bedroom-set "contents" tags abbreviate piece names ("Queen Bed + NS +
+// Dresser + Mirror + Chest") — expand the recognized abbreviations, leave
+// anything unrecognized as-is (lowercased) rather than guess.
+const PIECE_ABBREV = { NS: "nightstand", HB: "headboard", FB: "footboard", DR: "dresser", MR: "mirror", CH: "chest" };
+function expandPieceAbbrev(piece) {
+  if (PIECE_ABBREV[piece.toUpperCase()]) return PIECE_ABBREV[piece.toUpperCase()];
+  return piece.toLowerCase();
+}
 
 const OPENERS = [
   ({ name, type, style, collection }) => collection
@@ -101,12 +109,22 @@ export function composeDescription(sku, product, fact) {
   const frameFinish = details["Frame Finish"] || "";
   const hardware = details["Hardware"] || "";
 
-  // features list frequently repeats Style/Finish/Material verbatim as tags
-  // (sometimes with slightly different punctuation than the labeled field —
-  // normKey compares on meaning, not exact formatting) — drop anything that
-  // duplicates a fact we already state explicitly.
-  const usedValues = new Set([style, finish, material, frameFinish].filter(Boolean).map(normKey));
-  const extraFeatures = rawFeatures.filter((f) => !usedValues.has(normKey(f))).slice(0, 4);
+  // features list frequently repeats Style/Finish/Material verbatim as tags,
+  // sometimes with different wording than the labeled field for the SAME
+  // fact ("Linen-like" in Material vs "Linen-like Fabric" in features) —
+  // compare by substring-containment on individual comma-split tokens, not
+  // exact equality, and also drop a feature that's a set's own piece list
+  // ("Queen Bed + NS + Dresser...", handled as its own sentence below).
+  const usedTokens = [style, finish, material, frameFinish]
+    .filter(Boolean).flatMap((v) => v.split(",")).map(normKey).filter(Boolean);
+  const isDuplicateFact = (f) => {
+    const nf = normKey(f);
+    return usedTokens.some((u) => nf.includes(u) || u.includes(nf));
+  };
+  const setContentsTag = rawFeatures.find((f) => f.includes(" + "));
+  const extraFeatures = rawFeatures
+    .filter((f) => f !== setContentsTag && !isDuplicateFact(f))
+    .slice(0, 4);
 
   if (!style && !finish && !material && extraFeatures.length === 0 && dims.length === 0) return null; // nothing to ground a description in
 
@@ -122,6 +140,10 @@ export function composeDescription(sku, product, fact) {
     sentences.push(`It comes in a ${finish} finish.`);
   }
   if (hardware) sentences.push(pick(sku, "hardware", HARDWARE_TEMPLATES)(hardware));
+  if (setContentsTag) {
+    const pieces = setContentsTag.split(" + ").map((s) => s.trim()).filter(Boolean).map(expandPieceAbbrev);
+    if (pieces.length) sentences.push(`The set includes ${joinNatural(pieces)}.`);
+  }
   if (extraFeatures.length) sentences.push(pick(sku, "features", FEATURE_TEMPLATES)(extraFeatures));
   if (dims.length === 1) {
     // omit the piece name when it's just the product's own type restated
