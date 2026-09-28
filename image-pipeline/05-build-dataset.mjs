@@ -38,9 +38,23 @@ const prodRows = db
   .all(...(brand ? [brand] : []));
 const bySku = new Map(prodRows.map((p) => [p.sku, p]));
 
-const candFor = db.prepare(
-  "SELECT resolved_url, width, height, kind, rights_class, bytes, gallery_rank FROM candidate_images WHERE sku = ? AND status='verified' ORDER BY gallery_rank",
-);
+// One bulk query instead of one-per-product: on this environment's disk each
+// individual indexed lookup has been observed to cost ~200-400ms (storage
+// latency, not a missing index), which turns ~5,600 sequential per-SKU
+// queries into 20+ minutes that looks indistinguishable from a hang. Batching
+// into a single query + in-memory grouping avoids that entirely.
+const candsBySku = new Map();
+{
+  const where = brand ? "WHERE status='verified' AND sku IN (SELECT sku FROM products WHERE brand_key = ?)" : "WHERE status='verified'";
+  const rows = db
+    .prepare(`SELECT sku, resolved_url, width, height, kind, rights_class, bytes, gallery_rank FROM candidate_images ${where} ORDER BY sku, gallery_rank`)
+    .all(...(brand ? [brand] : []));
+  for (const r of rows) {
+    if (!candsBySku.has(r.sku)) candsBySku.set(r.sku, []);
+    candsBySku.get(r.sku).push(r);
+  }
+}
+const candFor = { all: (sku) => candsBySku.get(sku) || [] };
 
 let changedIndex = 0, changedDetail = 0, singles = 0, unresolved = 0, multi = 0;
 const samples = [];

@@ -8,6 +8,12 @@ const HOST_RPS = {
   "cdn.foagroup.com": Number(process.env.FOA_CDN_RPS) || 6,
   // FOA product-page HTML — gentle
   "www.foagroup.com": Number(process.env.FOA_PAGE_RPS) || 1,
+  // NOTE: ACME's dealer product-page HTML (robots.txt: Crawl-delay 10) and its
+  // actual image files are both served from the bare "acmecorp.com" host, so
+  // this bucket can't slow just the pages without also throttling every image
+  // download (which already runs successfully at DEFAULT_RPS via this same
+  // host). 02c-fetch-acme-pages.mjs paces its OWN page requests with an
+  // explicit 10s sleep instead of a host-bucket entry here.
 };
 
 class Bucket {

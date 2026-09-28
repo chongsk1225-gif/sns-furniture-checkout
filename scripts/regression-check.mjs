@@ -3,11 +3,13 @@
  *   node scripts/regression-check.mjs [baseUrl]
  * default baseUrl: http://127.0.0.1:8787
  *
- * Confirms the catalog is intact (9,369 products) and every storefront page
- * plus the new checkout pages/endpoints respond as expected.
+ * Confirms the catalog is intact (9,369 total SKUs, 9,181 browsable — 188 are
+ * intentionally hidden for having no verifiable manufacturer photo) and every
+ * storefront page plus the checkout pages/endpoints respond as expected.
  */
 const BASE = (process.argv[2] || process.env.BASE || "http://127.0.0.1:8787").replace(/\/$/, "");
 const EXPECTED_PRODUCTS = 9369;
+const EXPECTED_BROWSABLE = 9181; // catalog-index.json excludes hidden (unverifiable-photo) products
 
 let failures = 0;
 function ok(name) {
@@ -69,8 +71,8 @@ const run = async () => {
   try {
     const { res, text } = await get("/data/catalog-index.json");
     const arr = JSON.parse(text);
-    if (res.status === 200 && Array.isArray(arr) && arr.length === EXPECTED_PRODUCTS) {
-      ok(`catalog-index.json has ${EXPECTED_PRODUCTS} products`);
+    if (res.status === 200 && Array.isArray(arr) && arr.length === EXPECTED_BROWSABLE) {
+      ok(`catalog-index.json has ${EXPECTED_BROWSABLE} browsable products`);
     } else {
       bad("catalog-index.json", `status ${res.status}, length ${Array.isArray(arr) ? arr.length : "n/a"}`);
     }
@@ -109,9 +111,7 @@ const run = async () => {
   await checkPage(
     "/checkout.html",
     "DELIVERY ADDRESS",
-    "Your payment covers merchandise and applicable sales tax only",
-    "Delivery charges are quoted separately after your merchandise order is received",
-    "We will contact you to confirm availability, delivery details, and the delivery charge before scheduling delivery",
+    "Your payment covers merchandise, applicable sales tax, and a flat $150.00 delivery fee",
     "California delivery addresses only",
     "terms.html",
     "returns.html",

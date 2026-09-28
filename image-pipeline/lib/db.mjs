@@ -5,8 +5,13 @@ import { dirname, join } from "node:path";
 import { existsSync, openSync, closeSync, writeSync, readFileSync, unlinkSync } from "node:fs";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
-export const DB_PATH = join(ROOT, "pipeline.db");
-export const LOCK_PATH = join(ROOT, ".pipeline.lock");
+// Override for read-only work against a point-in-time copy (e.g. a dataset
+// rebuild) while another phase is actively writing pipeline.db — avoids lock
+// contention with a live writer instead of trying to out-wait it.
+export const DB_PATH = process.env.PIPELINE_DB_PATH || join(ROOT, "pipeline.db");
+export const LOCK_PATH = process.env.PIPELINE_DB_PATH
+  ? `${process.env.PIPELINE_DB_PATH}.lock`
+  : join(ROOT, ".pipeline.lock");
 
 let _openHandles = [];
 
