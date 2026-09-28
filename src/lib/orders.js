@@ -30,9 +30,9 @@ export async function createPendingOrder(env, data) {
     const orderStmt = env.DB.prepare(
       `INSERT INTO orders (
          order_number, status, environment, created_at, updated_at, currency,
-         subtotal_cents, tax_cents, tax_rate, tax_source, total_cents, fulfillment,
+         subtotal_cents, tax_cents, tax_rate, tax_source, shipping_cents, total_cents, fulfillment,
          customer_name, customer_email, customer_phone, delivery_address
-       ) VALUES (?, 'pending', ?, ?, ?, 'USD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) VALUES (?, 'pending', ?, ?, ?, 'USD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).bind(
       orderNumber,
       data.environment,
@@ -42,6 +42,7 @@ export async function createPendingOrder(env, data) {
       data.taxCents,
       data.taxRate,
       data.taxSource,
+      data.shippingCents,
       data.totalCents,
       data.fulfillment,
       data.customer.name,

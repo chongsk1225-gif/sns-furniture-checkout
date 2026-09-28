@@ -4,7 +4,7 @@
   //
   //   Top-level config  = the production Worker "sns-furniture" (snsfurniture.com).
   //                       NOT deployed — production activation is gated on explicit
-  //                       user approval and a wired-up TaxJar production config.
+  //                       user approval.
   //   [env.staging]      = a SEPARATE Worker "sns-furniture-staging"
   //                       (sns-furniture-staging.chongsk1225.workers.dev) for
   //                       end-to-end sandbox testing. Shares nothing with prod.
@@ -13,11 +13,13 @@
   // email are untouched. Static assets are served first; the Worker script only
   // runs for unmatched paths (i.e. /api/checkout/*).
   //
-  // Delivery only, California delivery addresses only. TaxJar validates the
-  // delivery address and calculates destination-based CA tax; it is the sole
-  // authority for "is this a valid California address". The "manual" tax provider
-  // is a LOCAL automated-test fixture only — it requires ALLOW_MANUAL_TAX="true",
-  // which is set only in the local .dev.vars and never in staging/production.
+  // Delivery only, California delivery addresses only. Sales tax is computed
+  // from src/lib/ca-district-tax-rates.json, a machine-parsed copy of CDTFA-95
+  // (CDTFA's own official quarterly city/county rate table) — no external tax
+  // API, no account, no secret. It is the sole authority for "is this a valid
+  // California address" (an unmatched city is rejected, never guessed). A flat
+  // $150.00 delivery fee (SHIPPING_CENTS in src/routes/_common.js) is added to
+  // every order.
   // ─────────────────────────────────────────────────────────────────────────────
   "name": "sns-furniture",
   "main": "src/worker.js",
@@ -28,11 +30,9 @@
     "binding": "ASSETS"
   },
   "vars": {
-    // Non-secret config only. Secrets (AUTHORIZE_NET_*, TAXJAR_API_KEY) are set
-    // with `wrangler secret put`.
+    // Non-secret config only. Secrets (AUTHORIZE_NET_*) are set with `wrangler secret put`.
     "ALLOWED_ORIGINS": "https://snsfurniture.com",
-    "TAX_PROVIDER": "",
-    "TAXJAR_API_BASE": "https://api.taxjar.com"
+    "TAX_PROVIDER": "ca-district-table"
   },
   "d1_databases": [
     {
@@ -56,9 +56,7 @@
       },
       "vars": {
         "ALLOWED_ORIGINS": "https://sns-furniture-staging.chongsk1225.workers.dev",
-        "TAX_PROVIDER": "taxjar",
-        "TAXJAR_API_BASE": "https://api.sandbox.taxjar.com"
-        // No TAX_MANUAL_RATE / ALLOW_MANUAL_TAX here — the manual fixture cannot run in staging.
+        "TAX_PROVIDER": "ca-district-table"
       },
       "d1_databases": [
         {

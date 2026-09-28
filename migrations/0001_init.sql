@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS orders (
   subtotal_cents   INTEGER NOT NULL,
   tax_cents        INTEGER NOT NULL,
   tax_rate         REAL,                      -- nullable; informational
-  tax_source       TEXT,                      -- e.g. manual-test | taxjar | avalara
+  tax_source       TEXT,                      -- e.g. ca-district-table
   total_cents      INTEGER NOT NULL,
   fulfillment      TEXT NOT NULL,             -- pickup | delivery_quote
   customer_name    TEXT,

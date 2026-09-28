@@ -9,15 +9,15 @@ import {
 } from "../lib/security.js";
 import { validateCart } from "../lib/catalog.js";
 import { computeTax } from "../lib/tax.js";
-import { parseLines, parseDeliveryAddress } from "./_common.js";
+import { parseLines, parseDeliveryAddress, SHIPPING_CENTS } from "./_common.js";
 
 /**
  * POST /api/checkout/tax-quote
  * Body: { lines:[{sku,qty}], delivery:{line1,city,state,zip,country} }
- * → 200 { subtotalCents, taxCents, taxRate, taxSource, totalCents, jurisdiction }
+ * → 200 { subtotalCents, taxCents, taxRate, taxSource, shippingCents, totalCents, jurisdiction }
  *   409 tax_unavailable       — no working tax provider
- *   422 ca_delivery_only      — TaxJar resolved the address outside California
- *   422 address_unverifiable  — TaxJar could not validate the address
+ *   422 ca_delivery_only      — resolved address is outside California
+ *   422 address_unverifiable  — the delivery city has no CDTFA rate on file
  */
 export async function handleTaxQuote(request, env) {
   assertAllowedOrigin(request, env);
@@ -44,7 +44,8 @@ export async function handleTaxQuote(request, env) {
     taxRate: tax.taxRate,
     taxSource: tax.source,
     jurisdiction: tax.jurisdiction || null,
-    totalCents: subtotalCents + tax.taxCents,
+    shippingCents: SHIPPING_CENTS,
+    totalCents: subtotalCents + tax.taxCents + SHIPPING_CENTS,
     lineCount: items.length,
   });
 }

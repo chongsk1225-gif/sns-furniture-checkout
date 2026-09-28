@@ -35,7 +35,7 @@
       .join("");
     const card = d.card ? esc(d.card.brand) + " ending " + esc(d.card.last4) : "—";
     const fulfil =
-      "We will contact you to confirm availability, delivery details, and the delivery charge before scheduling delivery. Delivery, assembly and related services are billed separately from this payment.";
+      "We will contact you to confirm availability and schedule delivery. Your flat delivery fee has already been paid as part of this order; assembly and any additional services, if requested, are billed separately.";
     return (
       '<div class="status-card">' +
       '<div class="summary-row"><span>Order number</span><span><b>' +
@@ -61,6 +61,9 @@
       "</span></div>" +
       '<div class="summary-row"><span>Sales tax</span><span>' +
       cents(d.taxCents) +
+      "</span></div>" +
+      '<div class="summary-row"><span>Delivery (flat fee)</span><span>' +
+      cents(d.shippingCents) +
       "</span></div>" +
       '<div class="summary-row total"><span>Paid today</span><span>' +
       cents(d.totalCents) +

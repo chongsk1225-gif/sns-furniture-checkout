@@ -15,7 +15,7 @@ import {
   hostedPaymentFormUrl,
   anetEnvironment,
 } from "../lib/authorizenet.js";
-import { parseLines, parseCustomer, parseDeliveryAddress, FULFILLMENT } from "./_common.js";
+import { parseLines, parseCustomer, parseDeliveryAddress, FULFILLMENT, SHIPPING_CENTS } from "./_common.js";
 
 /**
  * POST /api/checkout/create-token
@@ -25,11 +25,13 @@ import { parseLines, parseCustomer, parseDeliveryAddress, FULFILLMENT } from "./
  * → { orderNumber, token, hostedPaymentUrl, environment, amount }
  *
  * Delivery only. The delivery address is validated and confirmed to be in
- * California by TaxJar BEFORE any Authorize.Net token is created. Every
- * price/qty/total/tax value is recomputed server-side. No delivery fee is
- * charged here. The customer's BILLING address (incl. billing ZIP, for AVS) is
- * collected by Authorize.Net Accept Hosted — it is not derived from the delivery
- * address and may differ. No full card data is received or stored.
+ * California by the CDTFA district-rate lookup BEFORE any Authorize.Net token
+ * is created. Every price/qty/total/tax value is recomputed server-side. A
+ * flat, un-tiered $150 delivery fee (SHIPPING_CENTS) is added to every order
+ * and is not itself taxed (separately stated). The customer's BILLING address
+ * (incl. billing ZIP, for AVS) is collected by Authorize.Net Accept Hosted —
+ * it is not derived from the delivery address and may differ. No full card
+ * data is received or stored.
  */
 export async function handleCreateToken(request, env) {
   assertAllowedOrigin(request, env);
@@ -56,7 +58,7 @@ export async function handleCreateToken(request, env) {
     return errorResponse(tax.code, tax.code === "tax_unavailable" ? 409 : 422);
   }
 
-  const totalCents = subtotalCents + tax.taxCents; // merchandise + sales tax only
+  const totalCents = subtotalCents + tax.taxCents + SHIPPING_CENTS; // merchandise + sales tax + flat delivery
 
   const orderNumber = await createPendingOrder(env, {
     environment: anetEnvironment(env),
@@ -64,6 +66,7 @@ export async function handleCreateToken(request, env) {
     taxCents: tax.taxCents,
     taxRate: tax.taxRate,
     taxSource: tax.source,
+    shippingCents: SHIPPING_CENTS,
     totalCents,
     fulfillment: FULFILLMENT,
     customer,
@@ -78,7 +81,10 @@ export async function handleCreateToken(request, env) {
     ({ token } = await getHostedPaymentPageToken(env, {
       orderNumber,
       amountCents: totalCents,
-      items,
+      items: [
+        ...items,
+        { sku: "DELIVERY", name: "Delivery", brand: "", unitPriceCents: SHIPPING_CENTS, qty: 1 },
+      ],
       customerEmail: customer.email,
       returnUrl: `${origin}/checkout-approved.html?ref=${encodeURIComponent(orderNumber)}`,
       cancelUrl: `${origin}/checkout-cancel.html?ref=${encodeURIComponent(orderNumber)}`,
@@ -93,6 +99,6 @@ export async function handleCreateToken(request, env) {
     token,
     hostedPaymentUrl: hostedPaymentFormUrl(env),
     environment: anetEnvironment(env),
-    amount: { subtotalCents, taxCents: tax.taxCents, totalCents },
+    amount: { subtotalCents, taxCents: tax.taxCents, shippingCents: SHIPPING_CENTS, totalCents },
   });
 }

@@ -2,14 +2,18 @@
  *
  * NOTE: this does only structural validation of the delivery address (required
  * fields, US country, 5-digit ZIP). Whether the address is real and actually in
- * California is decided authoritatively by TaxJar in src/lib/tax.js — NOT by a
- * ZIP-prefix guess here. create-token calls the tax/address check BEFORE it
- * creates any Authorize.Net payment token.
+ * California, and what it owes in district tax, is decided authoritatively by
+ * the CDTFA rate-table lookup in src/lib/tax.js — NOT by a ZIP-prefix guess
+ * here. create-token calls the tax/address check BEFORE it creates any
+ * Authorize.Net payment token.
  */
 import { HttpError, str, optionalStr, email, phone } from "../lib/security.js";
 
 /** The only fulfillment method. Stored on every order record. */
 export const FULFILLMENT = "delivery";
+
+/** Flat delivery fee, every order, no tiers. Not taxed (separately stated). */
+export const SHIPPING_CENTS = 15000;
 
 export function parseLines(body) {
   const lines = body.lines;
@@ -35,7 +39,7 @@ const US_COUNTRY = /^(us|usa|u\.s\.|u\.s\.a\.|united states|united states of ame
 
 /**
  * Structural parse of the customer's delivery address. This is NOT the
- * California authority — TaxJar validates and confirms the jurisdiction.
+ * California authority — the CDTFA rate-table lookup validates and confirms the jurisdiction.
  */
 export function parseDeliveryAddress(body) {
   const d = body.delivery || {};

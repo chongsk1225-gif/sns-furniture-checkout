@@ -2,6 +2,7 @@
    Display only — the server revalidates every SKU, price and quantity at checkout. */
 (function () {
   const root = document.getElementById("cartRoot");
+  const SHIPPING_DOLLARS = 150; // flat delivery fee, display only — the Worker is the authority
   let catalog = null;
 
   async function ensureCatalog() {
@@ -94,14 +95,16 @@
       money(subtotal) +
       "</span></div>" +
       '<div class="summary-row"><span>Sales tax</span><span>Calculated at checkout</span></div>' +
-      '<div class="summary-row"><span>Delivery</span><span>Quoted separately</span></div>' +
+      '<div class="summary-row"><span>Delivery (flat fee)</span><span>' +
+      money(SHIPPING_DOLLARS) +
+      "</span></div>" +
       '<div class="summary-row total"><span>Estimated today</span><span>' +
-      money(subtotal) +
+      money(subtotal + SHIPPING_DOLLARS) +
       " + tax</span></div>" +
       (priceable
         ? '<a class="btn dark" href="checkout.html">PROCEED TO CHECKOUT</a>'
         : "") +
-      '<p class="muted">Online payment covers merchandise and applicable sales tax only. Delivery charges are quoted separately after your order is received. Checkout is available for California delivery addresses only. Orders remain subject to inventory and availability confirmation.</p>' +
+      '<p class="muted">Online payment covers merchandise, applicable sales tax, and a flat $150 delivery fee. Checkout is available for California delivery addresses only. Orders remain subject to inventory and availability confirmation.</p>' +
       "</aside></div>";
   }
 

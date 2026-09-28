@@ -9,17 +9,9 @@ AUTHORIZE_NET_SIGNATURE_KEY=""
 AUTHORIZE_NET_ENVIRONMENT="sandbox"
 
 # --- Tax ---
-# TaxJar is the real provider (address validation + destination-based CA tax).
-TAX_PROVIDER="taxjar"
-TAXJAR_API_BASE="https://api.sandbox.taxjar.com"   # production: https://api.taxjar.com
-TAXJAR_API_KEY=""
-
-# "manual" is a LOCAL AUTOMATED-TEST FIXTURE ONLY and is refused unless
-# ALLOW_MANUAL_TAX="true" AND the Authorize.Net environment is not production.
-# Never set these two in staging or production.
-#   TAX_PROVIDER="manual"
-#   TAX_MANUAL_RATE="0.095"
-#   ALLOW_MANUAL_TAX="true"
+# Real CDTFA city/county district rate table (src/lib/ca-district-tax-rates.json).
+# No external account, no API key, no network call — nothing else to set here.
+TAX_PROVIDER="ca-district-table"
 
 # --- App ---
 ALLOWED_ORIGINS="http://localhost:8787,http://127.0.0.1:8787"

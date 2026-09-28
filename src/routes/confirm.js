@@ -19,6 +19,7 @@ export async function handleConfirm(request, env) {
     currency: order.currency,
     subtotalCents: order.subtotal_cents,
     taxCents: order.tax_cents,
+    shippingCents: order.shipping_cents,
     totalCents: order.total_cents,
     createdAt: order.created_at,
     items: (order.items || []).map((i) => ({

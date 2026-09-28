@@ -1,9 +1,9 @@
 /* Checkout page controller — delivery only, California delivery addresses only.
    - No card data is handled here: on success the browser is POSTed to the
      Authorize.Net hosted payment page with a one-time token.
-   - All amounts shown are advisory; the Worker recomputes subtotal + tax from
-     the delivery address and will not issue a token if tax is unavailable.
-   - No delivery charge is collected in this checkout. */
+   - All amounts shown are advisory; the Worker recomputes subtotal + tax +
+     the flat delivery fee from the delivery address and will not issue a
+     token if tax is unavailable. */
 (function () {
   const form = document.getElementById("checkoutForm");
   const errEl = document.getElementById("coError");
@@ -98,6 +98,7 @@
   function setTaxIdle(message) {
     taxState = null;
     document.getElementById("coTax").textContent = message || "Enter delivery ZIP";
+    document.getElementById("coShipping").textContent = "—";
     document.getElementById("coTotal").textContent = "—";
     document.getElementById("coTaxRate").textContent = "";
     payBtn.disabled = true;
@@ -123,6 +124,7 @@
       taxState = r.data;
       document.getElementById("coSubtotal").textContent = cents(r.data.subtotalCents);
       document.getElementById("coTax").textContent = cents(r.data.taxCents);
+      document.getElementById("coShipping").textContent = cents(r.data.shippingCents);
       document.getElementById("coTotal").textContent = cents(r.data.totalCents);
       document.getElementById("coTaxRate").textContent =
         r.data.taxRate != null
@@ -133,6 +135,7 @@
     } else {
       taxState = null;
       document.getElementById("coTax").textContent = "Unavailable";
+      document.getElementById("coShipping").textContent = "—";
       document.getElementById("coTotal").textContent = "—";
       payBtn.disabled = true;
       showError(messageFor(r.data));
