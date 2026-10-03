@@ -34,7 +34,7 @@
   function tile(r, n) {
     var lazy = n < 6 ? "" : ' loading="lazy"', pri = n < 3 ? ' fetchpriority="high"' : "";
     return '<a class="lx-tile lx-reveal" href="catalog.html?collection=' + encodeURIComponent(r[0]) + '">' +
-      '<span class="lx-tile__media"><img src="' + esc(r[3]) + '" width="1000" height="1000" alt="' + esc(r[0]) + ' collection"' + lazy + pri + ' decoding="async"></span>' +
+      '<span class="lx-tile__media">' + LX.tileImg(n, r[3], r[0] + " collection") + '</span>' +
       '<span class="lx-tile__meta"><span class="lx-tile__eyebrow">' + esc(r[2].slice().sort(function (a, b) { return ORDER.indexOf(a) - ORDER.indexOf(b); }).join(" · ")) + '</span>' +
       '<span class="lx-tile__name">' + esc(r[0]) + '</span><span class="lx-tile__price">' + num(r[1]) + ' pieces</span></span></a>';
   }

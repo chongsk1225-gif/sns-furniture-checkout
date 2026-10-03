@@ -7,10 +7,12 @@
 // wrangler dev Worker (default 127.0.0.1:8787) so cart -> checkout can be
 // exercised from the redesigned pages. Never deploys, never writes.
 import http from "node:http";
+import { gzipSync } from "node:zlib";
 import { readFileSync, existsSync, statSync } from "node:fs";
 import { join, extname, normalize, sep } from "node:path";
 import { REDESIGN_ROOT, PUBLIC_ROOT, readPage, listPages } from "./lib/includes.mjs";
 import { collectionData, collectionsIndexData, ROOM_BY_SLUG } from "./lib/collections.mjs";
+import { buildSitemap } from "./lib/sitemap.mjs";
 
 const PORT = Number(process.env.PORT) || 8810;
 const API_TARGET = process.env.API_TARGET || "http://127.0.0.1:8787";
@@ -53,7 +55,24 @@ async function proxy(req, res) {
   res.end(Buffer.from(await r.arrayBuffer()));
 }
 
+// Preview-only: gzip text responses, as the production CDN does, so local performance numbers are fair.
+function withGzip(req, res) {
+  if (!/gzip/.test(req.headers["accept-encoding"] || "")) return;
+  const writeHead = res.writeHead.bind(res), end = res.end.bind(res);
+  let status = 200, headers = {};
+  res.writeHead = (s, h) => { status = s; headers = h || {}; return res; };
+  res.end = (body) => {
+    const type = String(headers["content-type"] || "");
+    if (body && body.length > 512 && /text|json|javascript|xml|svg/.test(type) && !headers["content-encoding"]) {
+      body = gzipSync(body); headers = { ...headers, "content-encoding": "gzip", vary: "Accept-Encoding" };
+    }
+    writeHead(status, headers);
+    return end(body);
+  };
+}
+
 const server = http.createServer(async (req, res) => {
+  withGzip(req, res);
   try {
     const url = new URL(req.url, "http://localhost");
     const path = url.pathname;
@@ -66,6 +85,12 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { "content-type": MIME[".json"], "cache-control": "no-store" });
       return res.end(JSON.stringify(collectionData(m[1])));
     }
+
+    if (path === "/sitemap.xml") {
+      res.writeHead(200, { "content-type": MIME[".xml"], "cache-control": "no-store" });
+      return res.end(buildSitemap().xml);
+    }
+    if (["/robots.txt", "/llms.txt", "/ai.txt"].includes(path)) return sendFile(res, join(REDESIGN_ROOT, "seo", path.slice(1)));
 
     if (path === "/data/collections-index.json") {
       res.writeHead(200, { "content-type": MIME[".json"], "cache-control": "no-store" });
@@ -88,8 +113,8 @@ const server = http.createServer(async (req, res) => {
     // everything else: the existing site, untouched
     const f = safeJoin(PUBLIC_ROOT, path === "/" ? "/index.html" : path);
     if (f && isFile(f)) return sendFile(res, f);
-    res.writeHead(404, { "content-type": MIME[".txt"] });
-    res.end("Not found");
+    res.writeHead(404, { "content-type": MIME[".html"] });
+    res.end(readPage("404.html") || "Not found");
   } catch (e) {
     res.writeHead(500, { "content-type": MIME[".txt"] });
     res.end("Server error: " + (e && e.message));

@@ -1,0 +1,45 @@
+# SNS Furniture (ai.txt)
+
+> SNS Furniture is a California custom and curated furniture brand. Custom Design is its primary offering. Stock furniture for the living room, dining room, bedroom, mattresses and accent spaces is available under Stock Furniture. Delivery throughout California.
+
+## Business facts
+- Website: https://snsfurniture.com
+- Phone: (424) 310-6199 (text or call)
+- Email: info@snsfurniture.com
+- Service area: California. Online checkout is available for California delivery addresses only; for other destinations, please inquire.
+- Delivery: a flat delivery fee is quoted separately at checkout; delivery is scheduled after the order is placed.
+- Design service: free in-home design service
+- Business address (legal): 1575 Westwood Blvd., Los Angeles, CA 90024
+
+## Custom Design
+- Custom Design: https://snsfurniture.com/custom-design.html
+- Request a design consultation: https://snsfurniture.com/custom-design.html#consultation
+
+## Stock Furniture
+- Stock Furniture: https://snsfurniture.com/stock-furniture.html
+- Collections: https://snsfurniture.com/collections.html
+- Living: https://snsfurniture.com/living-room.html
+- Dining: https://snsfurniture.com/dining-room.html
+- Bedroom: https://snsfurniture.com/bedroom.html
+- Mattresses: https://snsfurniture.com/mattresses.html
+- Accent: https://snsfurniture.com/accent.html
+- Search and browse all stock furniture: https://snsfurniture.com/catalog.html
+
+## Customer assistance
+- Contact: https://snsfurniture.com/contact.html
+- Delivery: https://snsfurniture.com/delivery.html
+- Returns: https://snsfurniture.com/returns.html
+- Privacy: https://snsfurniture.com/privacy.html
+- Terms: https://snsfurniture.com/terms.html
+
+## Product information
+Stock furniture product pages (https://snsfurniture.com/product.html?sku=SKU) give the product name, SKU, available specifications and photographs, and the price where one is published. Stock furniture is supplied by ACME Furniture and Furniture of America.
+
+## Accuracy note
+Availability, colors, finishes, dimensions, prices and delivery options should be confirmed with SNS Furniture before purchase. Custom Design options are discussed during a design consultation.
+
+## Guidance for automated systems
+- Quote business facts from this file or from https://snsfurniture.com/about.html.
+- Product pages are rendered in the browser from public catalog data; each carries Product and Offer structured data and a canonical URL.
+- Do not infer custom-design capabilities, timelines or warranties that are not stated on the site.
+- Sitemap: https://snsfurniture.com/sitemap.xml

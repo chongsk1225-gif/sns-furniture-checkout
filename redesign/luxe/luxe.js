@@ -9,7 +9,7 @@
   /* ---------- header: transparent over the hero, solid after it ---------- */
   var header = d.querySelector("[data-lx-header]");
   function setSolid(on) { if (header) header.classList.toggle("is-solid", on); }
-  var heroEl = d.querySelector(".lx-hero, .lx-chero");
+  var heroEl = d.querySelector(".lx-hero, .lx-chero, .lx-open");
   if (!body.classList.contains("lx-overlay-header") || !heroEl) {
     setSolid(true);
   } else if ("IntersectionObserver" in window) {
@@ -123,6 +123,7 @@
   var io = null;
   function observe(el) {
     if (!el) return;
+    if (el.querySelectorAll) [].forEach.call(el.querySelectorAll("img[data-src]"), lazyImg);
     if (reduce || !("IntersectionObserver" in window)) { el.classList.add("is-in"); return; }
     if (!io) {
       io = new IntersectionObserver(function (es) {
@@ -132,7 +133,53 @@
     io.observe(el);
   }
   all(".lx-reveal, .lx-panel").forEach(observe);
-  window.LX = { observe: observe, reduce: reduce };
+  /* ---------- tile images: only the first row loads up front; the rest load as they approach the viewport ---------- */
+  var GIF = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+  var lazyIO = null;
+  function lazyImg(img) {
+    if (!img || !img.getAttribute("data-src")) return;
+    if (!("IntersectionObserver" in window)) { img.src = img.getAttribute("data-src"); img.removeAttribute("data-src"); return; }
+    if (!lazyIO) lazyIO = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        var im = e.target; im.src = im.getAttribute("data-src"); im.removeAttribute("data-src"); lazyIO.unobserve(im);
+      });
+    }, { rootMargin: "320px 0px", threshold: 0 });
+    lazyIO.observe(img);
+  }
+  function tileImg(n, src, alt) {
+    var e = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+    if (n < 4) return '<img src="' + e(src) + '" width="1000" height="1000" alt="' + e(alt) + '"' + (n < 2 ? ' fetchpriority="high"' : "") + ' decoding="async">';
+    return '<img src="' + GIF + '" data-src="' + e(src) + '" width="1000" height="1000" alt="' + e(alt) + '" decoding="async">';
+  }
+  window.LX = { observe: observe, reduce: reduce, tileImg: tileImg };
+
+  /* ---------- small verified images are shown at native size, never stretched ---------- */
+  function markNative(img) {
+    var box = img.closest && img.closest(".lx-tile, .lx-media");
+    if (box && img.naturalWidth && img.naturalWidth <= 320) box.classList.add("is-native");
+  }
+  d.addEventListener("load", function (e) { if (e.target && e.target.tagName === "IMG") markNative(e.target); }, true);
+  [].forEach.call(d.images, function (i) { if (i.complete) markNative(i); });
+
+  /* ---------- opening: restrained parallax (off for reduced-motion and data saver) ---------- */
+  var openEl = d.querySelector("[data-open]");
+  if (openEl && !reduce && !root.classList.contains("lx-save")) {
+    var stage = openEl.querySelector("[data-open-stage]"), lamps = openEl.querySelector(".lx-open__lights"), pending = false;
+    var tick = function () {
+      pending = false;
+      var y = Math.min(window.scrollY || 0, window.innerHeight * 1.2);
+      if (stage) stage.style.setProperty("--py", (y * 0.09).toFixed(1) + "px");
+      if (lamps) lamps.style.setProperty("--ly", (y * 0.2).toFixed(1) + "px");
+    };
+    addEventListener("scroll", function () { if (!pending) { pending = true; requestAnimationFrame(tick); } }, { passive: true });
+    if (lamps && window.matchMedia && matchMedia("(pointer: fine)").matches) {
+      openEl.addEventListener("pointermove", function (e) {
+        var r = openEl.getBoundingClientRect();
+        lamps.style.setProperty("--lx-lx", (((e.clientX - r.left) / r.width - 0.5) * -26).toFixed(1) + "px");
+      });
+    }
+  }
 
   /* ---------- collections: hover/focus preview ---------- */
   var clist = d.querySelector("[data-clist]"), prev = d.querySelector("[data-cpreview]");

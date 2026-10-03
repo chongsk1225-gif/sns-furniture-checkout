@@ -60,7 +60,7 @@
     var eyebrow = p.collection ? esc(p.collection) + " collection" : esc(p.type || ROOM_LABEL[p.category] || "");
     var lazy = n < 6 ? "" : ' loading="lazy"', pri = n < 3 ? ' fetchpriority="high"' : "";
     return '<a class="lx-tile lx-reveal" href="product.html?sku=' + encodeURIComponent(p.sku) + '">' +
-      '<span class="lx-tile__media"><img src="' + esc(p.image) + '" width="1000" height="1000" alt="' + esc(p.name) + '"' + lazy + pri + ' decoding="async"></span>' +
+      '<span class="lx-tile__media">' + LX.tileImg(n, p.image, p.name) + '</span>' +
       '<span class="lx-tile__meta"><span class="lx-tile__eyebrow">' + eyebrow + '</span><span class="lx-tile__name">' + esc(p.name) + '</span><span class="lx-tile__price">' + price(p.sale) + '</span></span></a>';
   }
   function paint(reset) {

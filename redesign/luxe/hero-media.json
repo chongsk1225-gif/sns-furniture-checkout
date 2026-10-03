@@ -1,50 +1,26 @@
 {
-  "_readme": "Homepage hero media slot for the Sigma 1006/1007 cinematic. Nothing here is generated or substituted: until the supplied files are installed the page shows an art-directed placeholder with no furniture. FIDELITY RULES: the footage and stills are shown exactly as supplied. The page never recolors, mirrors, flips, stretches, overlays or re-crops the furniture beyond CSS object-fit:cover; set \"focus\" (CSS object-position, e.g. \"50% 62%\") so the Sigma pieces stay inside the crop on both desktop and the 9:16 mobile cut, and supply a separate portrait cut rather than relying on cropping. To install: drop the files in redesign/luxe/media/hero/, fill in poster/video below (see example_when_filled). The poster is rendered server-side (fast LCP, no layout shift); video loads after the page is interactive, and is skipped for reduced-motion and data-saver users, who see the poster only.",
-  "label": "Sigma I006/I007",
-  "alt": "",
-  "focus": null,
-  "poster": null,
+  "_readme": "Opening media for the home page and the Custom Design page. These are the two supplied Sigma 1006/1007 photographs, copied byte-for-byte from the originals (sha256 fd4adcdb... for the room photograph, 439a02ff... for the studio photograph). They are shown exactly as supplied: the page never recolors, mirrors, flips, stretches, filters or re-crops the furniture. The 'lights turning on' effect is a dark overlay that fades to fully transparent plus warm light layers placed behind the photograph, so the final frame is the original image. Both files are 1000x800, so they are displayed at no more than roughly their native size and are never up-scaled to full-bleed. GENUINE VIDEO LATER: drop the supplied file(s) in redesign/luxe/media/hero/ and fill in 'video' (see example_video). The video then plays inside the same frame above the still photograph, which becomes its poster; it loads after the page is interactive and is skipped for reduced-motion and data-saver visitors, who keep the still. Nothing is generated or synthesized.",
+  "label": "Sigma 1006/1007",
+  "poster": {
+    "src": "luxe/media/hero/sigma-1006-1007-room.webp",
+    "width": 1000,
+    "height": 800,
+    "alt": "A low, pale sectional with a wood-toned inset table in a bright corner room with floor-to-ceiling windows, in front of a white marble coffee table."
+  },
+  "studio": {
+    "src": "luxe/media/hero/sigma-1006-1007-studio.webp",
+    "width": 1000,
+    "height": 800,
+    "alt": "A low sectional in pale stone upholstery with a wood-toned inset table between a chaise and a sofa, photographed against a white studio backdrop."
+  },
   "video": null,
-  "example_when_filled": {
-    "poster": {
-      "width": 1920,
-      "height": 1080,
-      "src": "luxe/media/hero/sigma-poster-1920.jpg",
-      "sources": [
-        {
-          "srcset": "luxe/media/hero/sigma-poster-1920.avif 1920w, luxe/media/hero/sigma-poster-1280.avif 1280w",
-          "type": "image/avif"
-        },
-        {
-          "srcset": "luxe/media/hero/sigma-poster-1920.webp 1920w, luxe/media/hero/sigma-poster-1280.webp 1280w",
-          "type": "image/webp"
-        }
-      ],
-      "mobile": {
-        "src": "luxe/media/hero/sigma-poster-mobile.jpg"
-      }
-    },
-    "video": {
-      "desktop": [
-        {
-          "src": "luxe/media/hero/sigma-1920.webm",
-          "type": "video/webm"
-        },
-        {
-          "src": "luxe/media/hero/sigma-1920.mp4",
-          "type": "video/mp4"
-        }
-      ],
-      "mobile": [
-        {
-          "src": "luxe/media/hero/sigma-mobile.webm",
-          "type": "video/webm"
-        },
-        {
-          "src": "luxe/media/hero/sigma-mobile.mp4",
-          "type": "video/mp4"
-        }
-      ]
-    }
+  "example_video": {
+    "desktop": [
+      { "src": "luxe/media/hero/sigma-1006-1007.webm", "type": "video/webm" },
+      { "src": "luxe/media/hero/sigma-1006-1007.mp4", "type": "video/mp4" }
+    ],
+    "mobile": [
+      { "src": "luxe/media/hero/sigma-1006-1007-mobile.mp4", "type": "video/mp4" }
+    ]
   }
 }

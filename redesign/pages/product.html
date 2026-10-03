@@ -4,10 +4,21 @@
 <!--@include head-->
 <!--@seo product.html-->
 <script>
-/* start the product-data request before CSS/JS finish loading */
+/* Start the product-data request before CSS/JS finish loading, and as soon as the product is
+   known, preload its first gallery image (the one the page will lead with) so the largest
+   paint is not waiting on JavaScript to discover it. Hidden products are never preloaded. */
 (function(){var s=(new URLSearchParams(location.search).get('sku')||'').trim();if(!s)return;
 window.__lxSku=s;
-window.__lxShard=fetch('data/details/'+encodeURIComponent(s.charAt(0).toLowerCase())+'.json').then(function(r){return r.ok?r.json():[]}).catch(function(){return[]});})();
+var media=fetch('data/luxe-media.json').then(function(r){return r.ok?r.json():{}}).catch(function(){return{}});
+window.__lxShard=fetch('data/details/'+encodeURIComponent(s.charAt(0).toLowerCase())+'.json').then(function(r){return r.ok?r.json():[]}).then(function(rows){
+  var rec=(rows||[]).filter(function(x){return x.sku===s})[0];
+  if(rec&&!rec.hidden){media.then(function(m){
+    var g=(rec.gallery&&rec.gallery.length?rec.gallery:[rec.image]).filter(Boolean),D=/_(dim|feat|draw|spec|cc)(_\d+)?\.(jpe?g|png)$/i,L=/_life\.(jpe?g|png)$/i,e=(m||{})[s],u;
+    if(e&&e.roles&&e.roles.lifestyle&&e.roles.lifestyle[0]){u=g.filter(function(x){return x.split('/').pop()===e.roles.lifestyle[0]})[0];}
+    if(!u)u=g.filter(function(x){return L.test(x)})[0]||g.filter(function(x){return !D.test(x)})[0]||g[0];
+    if(u){var l=document.createElement('link');l.rel='preload';l.as='image';l.href=u;l.setAttribute('fetchpriority','high');document.head.appendChild(l);}
+  });}
+  return rows;}).catch(function(){return[]});})();
 </script>
 </head>
 <body data-page="product" data-nav="">

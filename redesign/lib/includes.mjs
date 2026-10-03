@@ -62,43 +62,63 @@ export function fmtPrice(n) {
   return "$" + v.toLocaleString("en-US", { minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2 });
 }
 
-/* ───────────── hero media ───────────── */
-function heroMarkup() {
+/* ───────────── cinematic opening ─────────────
+   <!--@opening room-->    home page: the Sigma 1006/1007 room photograph
+   <!--@opening studio-->  Custom Design page: the Sigma 1006/1007 studio photograph
+   The photographs are shown exactly as supplied (no crop beyond the frame's own
+   5:4 aspect, no filter, no flip, no recolor). The "lights turning on" reveal is
+   a dark overlay that fades to fully transparent and warm light layers placed
+   BEHIND the photograph, so the final frame is the original image. All motion is
+   CSS-only, so it runs without JavaScript, and is switched off for
+   reduced-motion and data-saver visitors (who get the final frame at once).
+
+   VIDEO SLOT: set "video" in luxe/hero-media.json (see its _readme) and a genuine
+   high-resolution video will play inside the same frame, above the still image,
+   which then acts as the poster. Nothing is generated or synthesized here. */
+function openingMarkup(variant = "room") {
   const cfg = JSON.parse(read(join(REDESIGN_ROOT, "luxe", "hero-media.json")));
-  const poster = cfg.poster;
-  const video = cfg.video;
-  let media;
-  if (poster && poster.src) {
-    const m = poster.mobile;
-    const srcsets = (list) =>
-      (list || []).map((s) => `<source${s.media ? ` media="${esc(s.media)}"` : ""} srcset="${esc(s.srcset)}" type="${esc(s.type)}">`).join("");
-    media = `<picture class="lx-hero__poster">
-        ${m ? `<source media="(max-width: 768px)" srcset="${esc(m.src)}">` : ""}
-        ${srcsets(poster.sources)}
-        <img src="${esc(poster.src)}" width="${poster.width || 1920}" height="${poster.height || 1080}" alt="${esc(cfg.alt || "")}" fetchpriority="high" decoding="async">
-      </picture>`;
-  } else {
-    media = `<div class="lx-hero__placeholder" role="img" aria-label="Hero media placeholder"><span class="lx-hero__grain"></span><span class="lx-hero__slats"></span><span class="lx-hero__light"></span></div>`;
-  }
-  const hasVideo = video && ((video.desktop && video.desktop.length) || (video.mobile && video.mobile.length));
-  const videoTag = hasVideo
-    ? `<video class="lx-hero__video" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1" data-desktop='${esc(JSON.stringify(video.desktop || []))}' data-mobile='${esc(JSON.stringify(video.mobile || []))}'></video>`
+  const studio = variant === "studio";
+  const still = studio ? cfg.studio : cfg.poster;
+  const video = studio ? null : cfg.video;
+  const hasVideo = !!(video && ((video.desktop && video.desktop.length) || (video.mobile && video.mobile.length)));
+  const img = still && still.src
+    ? `<img class="lx-open__img" src="${esc(still.src)}" width="${still.width || 1000}" height="${still.height || 800}" alt="${esc(still.alt || "")}" fetchpriority="high" decoding="async">`
     : "";
-  const note = !(poster && poster.src) && !hasVideo
-    ? `<p class="lx-slot-note" data-review-only>Hero media slot &middot; ${esc(cfg.label || "cinematic asset")} pending &middot; 16:9 loop + poster &middot; 9:16 mobile cut</p>`
+  const videoTag = hasVideo
+    ? `<!-- VIDEO SLOT: genuine supplied footage plays here, above the still image -->
+      <video class="lx-hero__video" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1" data-desktop='${esc(JSON.stringify(video.desktop || []))}' data-mobile='${esc(JSON.stringify(video.mobile || []))}'></video>`
     : "";
   const pause = hasVideo
     ? `<button class="lx-hero__toggle" type="button" data-hero-toggle aria-label="Pause background video" hidden><span aria-hidden="true"></span></button>`
     : "";
-  return `<section class="lx-hero" data-hero data-has-video="${hasVideo ? "1" : "0"}" aria-label="SNS Furniture"${cfg.focus ? ` style="--hero-pos:${esc(cfg.focus)}"` : ""}>
-    <div class="lx-hero__media" data-hero-media>${media}${videoTag}</div>
-    <div class="lx-hero__scrim"></div>
-    <div class="lx-hero__copy">
-      <p class="lx-hero__brand">SNS Furniture</p>
-      <h1 class="lx-hero__title">Custom, without compromise.</h1>
-      <a class="lx-btn lx-btn--light" href="custom-design.html">Discover custom</a>
+  const copy = studio
+    ? `<p class="lx-open__eyebrow">SNS Furniture</p>
+      <h1 class="lx-open__title" id="open-h1">Custom Design</h1>
+      <p class="lx-open__lede">Furniture designed around your space.</p>
+      <div class="lx-open__cta">
+        <a class="lx-btn lx-btn--light" href="#consultation">Request a Design Consultation</a>
+        <a class="lx-textlink lx-open__second" href="#process">How it works</a>
+      </div>`
+    : `<p class="lx-open__eyebrow">SNS Furniture</p>
+      <h1 class="lx-open__title" id="open-h1">The Custom Design Collection</h1>
+      <p class="lx-open__lede">Custom, without compromise.</p>
+      <div class="lx-open__cta">
+        <a class="lx-btn lx-btn--light" href="custom-design.html">Explore Custom Design</a>
+        <a class="lx-textlink lx-open__second" href="stock-furniture.html">Shop Stock Furniture</a>
+      </div>`;
+  return `<section class="lx-open lx-open--${variant}" data-hero data-open data-has-video="${hasVideo ? "1" : "0"}" aria-labelledby="open-h1">
+    <div class="lx-open__room" aria-hidden="true"><span class="lx-open__wall"></span><span class="lx-open__floor"></span></div>
+    <div class="lx-open__lights" aria-hidden="true"><i></i><i></i><i></i></div>
+    <figure class="lx-open__stage" data-open-stage>
+      <div class="lx-open__frame">
+        ${img}${videoTag}
+        <span class="lx-open__dim" aria-hidden="true"></span>
+      </div>
+    </figure>
+    <div class="lx-open__copy">
+      ${copy}
     </div>
-    ${note}${pause}
+    ${pause}
     <span class="lx-hero__cue" aria-hidden="true"></span>
   </section>`;
 }
@@ -157,12 +177,14 @@ function jsonLd(file) {
     const walk = (v) => Array.isArray(v) ? v.map(walk) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)])) : typeof v === "string" ? brand(v) : v;
     const out = walk(data);
     const types = [].concat(out["@type"] || []);
-    if (types.includes("LocalBusiness") && out.name === "SNS Furniture") out.alternateName = "Sash and Shade";
+    if (types.includes("FAQPage")) return ""; // generated from the visible FAQ by <!--@faq--> instead
+    if (types.includes("LocalBusiness")) return ""; // the business entity is emitted once, site-wide, by <!--@org-->
     return `<script type="application/ld+json">${JSON.stringify(out)}</script>`;
   }).join("\n");
 }
 
 /* ───────────── SEO passthrough + legacy page wrapping ───────────── */
+export const ogImage = (alt) => `<meta property="og:image" content="${OG_IMAGE}"><meta property="og:image:width" content="1000"><meta property="og:image:height" content="800"><meta property="og:image:alt" content="${esc(alt)}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="${OG_IMAGE}">`;
 function seoFrom(file) {
   const p = join(PUBLIC_ROOT, file);
   if (!existsSync(p)) return `<!-- ${esc(file)} not found -->`;
@@ -171,7 +193,9 @@ function seoFrom(file) {
   const attr = (re) => (html.match(re) || [])[1];
   const desc = attr(/<meta name="description" content="([^"]*)"/);
   const robots = attr(/<meta name="robots" content="([^"]*)"/);
-  const canon = attr(/<link rel="canonical" href="([^"]*)"/);
+  // Canonical = this page's own URL. (The inherited returns.html declared /refund.html, which does not exist.)
+  const declared = attr(/<link rel="canonical" href="([^"]*)"/);
+  const canon = declared ? (file === "index.html" ? SITE + "/" : SITE + "/" + file) : declared;
   const t = brand(title);
   return [
     `<title>${t}</title>`,
@@ -181,6 +205,7 @@ function seoFrom(file) {
     `<meta property="og:type" content="website"><meta property="og:site_name" content="SNS Furniture"><meta property="og:title" content="${t}">`,
     desc ? `<meta property="og:description" content="${brand(desc)}">` : "",
     canon ? `<meta property="og:url" content="${canon}">` : "",
+    ogImage(t),
     jsonLd(file),
   ].filter(Boolean).join("\n");
 }
@@ -197,6 +222,52 @@ function wrapLegacy(file) {
     .replace(/<section class="(?:shop|section|policy)">/g, '<section class="lx-legacy__section">')
     .replace(/<div class="eyebrow">/g, '<p class="lx-eyebrow">').replace(/(<p class="lx-eyebrow">[^<]*)<\/div>/g, "$1</p>");
 }
+/* ───────────── structured data helpers ───────────── */
+const SITE = "https://snsfurniture.com";
+export const OG_IMAGE = `${SITE}/luxe/media/hero/sigma-1006-1007-room.webp`;
+const ld = (o) => `<script type="application/ld+json">${JSON.stringify(o)}</script>`;
+function breadcrumbs(spec) {
+  const items = spec.split(",").map((s) => s.trim()).filter(Boolean).map((p) => {
+    const i = p.lastIndexOf("|");
+    return { name: p.slice(0, i), url: p.slice(i + 1) };
+  });
+  return ld({
+    "@context": "https://schema.org", "@type": "BreadcrumbList",
+    itemListElement: items.map((it, n) => ({ "@type": "ListItem", position: n + 1, name: it.name, item: it.url ? `${SITE}/${it.url}` : `${SITE}/` })),
+  });
+}
+function collectionPage(spec) {
+  const [name, url, description] = spec.split("|").map((s) => s.trim());
+  return ld({
+    "@context": "https://schema.org", "@type": "CollectionPage", name, url: `${SITE}/${url}`, description,
+    isPartOf: { "@id": `${SITE}/#website` }, publisher: { "@id": `${SITE}/#business` },
+  });
+}
+const FAQ = [
+  ["What does SNS Furniture offer?", "SNS Furniture offers custom furniture design, along with stock furniture for the living room, dining room, bedroom, mattresses and accent spaces."],
+  ["How do I start a custom design?", "Request a design consultation from the Custom Design page, or text or call (424) 310-6199."],
+  ["Does SNS Furniture offer design help?", "Yes. SNS Furniture offers free in-home design service. Text or call (424) 310-6199."],
+  ["Does SNS Furniture deliver?", "Delivery options depend on the product and destination. California is the primary service area, and qualifying nationwide delivery may be available."],
+];
+// One source for the visible FAQ and its FAQPage markup, so they can never disagree.
+function faqMarkup() {
+  const details = FAQ.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join("\n      ");
+  const data = ld({ "@context": "https://schema.org", "@type": "FAQPage", mainEntity: FAQ.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) });
+  return `${details}\n      ${data}`;
+}
+function orgMarkup() {
+  return ld({
+    // The single business entity for the whole site (products reference it as "seller"). SNS Furniture
+    // sells online with delivery only, so it is an Organization / OnlineStore, not a walk-in shop.
+    "@context": "https://schema.org", "@type": ["Organization", "OnlineStore"], "@id": `${SITE}/#business`, name: "SNS Furniture", alternateName: "Sash and Shade", url: `${SITE}/`,
+    description: "SNS Furniture is a California custom and curated furniture brand with in-home design service and delivery throughout California.",
+    telephone: "+1-424-310-6199", email: "info@snsfurniture.com",
+    address: { "@type": "PostalAddress", streetAddress: "1575 Westwood Blvd.", addressLocality: "Los Angeles", addressRegion: "CA", postalCode: "90024", addressCountry: "US" },
+    areaServed: [{ "@type": "State", name: "California" }],
+    contactPoint: { "@type": "ContactPoint", contactType: "customer service", telephone: "+1-424-310-6199", email: "info@snsfurniture.com", areaServed: "US-CA", availableLanguage: "English" },
+  });
+}
+
 function countMarkup(kind, name) {
   const idx = catalogIndex();
   const n = idx.filter((r) => (kind === "brand" ? r.brand === name : r.category === name)).length;
@@ -213,10 +284,16 @@ export function renderPage(html, depth = 0, commerce = COMMERCE) {
       const p = join(REDESIGN_ROOT, "partials", name + ".html");
       return existsSync(p) ? read(p) : `<!-- missing partial ${name} -->`;
     })
-    .replace(/<!--@hero-->/g, () => heroMarkup())
+    .replace(/<!--@hero-->/g, () => openingMarkup("room"))
+    .replace(/<!--@opening (room|studio)-->/g, (_, v) => openingMarkup(v))
     .replace(/<!--@seo ([\w.-]+)-->/g, (_, f) => seoFrom(f))
     .replace(/<!--@wrap ([\w.-]+)-->/g, (_, f) => wrapLegacy(f))
     .replace(/<!--@count (brand|room) ([^>]+?)-->/g, (_, k, n) => countMarkup(k, n))
+    .replace(/<!--@ogimage ([^>]*?)-->/g, (_, alt) => ogImage(alt))
+    .replace(/<!--@faq-->/g, () => faqMarkup())
+    .replace(/<!--@org-->/g, () => orgMarkup())
+    .replace(/<!--@breadcrumbs ([^>]*?)-->/g, (_, spec) => breadcrumbs(spec))
+    .replace(/<!--@collectionpage ([^>]*?)-->/g, (_, spec) => collectionPage(spec))
     .replace(/<!--@jsonld ([\w.-]+)-->/g, (_, f) => jsonLd(f))
     .replace(/<!--@product ([\w-]+)(?: ([\w-]+))?-->/g, (_, sku, cls) => productTile(sku, { cls }))
     .replace(/<!--@collections ([^>]*?)-->/g, (_, spec) => collectionsMarkup(spec));
@@ -231,7 +308,7 @@ function roomPage(slug) {
   const r = ROOMS[slug];
   const il = r.interlude;
   const vars = {
-    slug, category: r.category, h1: r.h1, vh: r.vh, nav: r.nav,
+    slug, category: r.category, h1: r.h1, vh: r.vh, nav: r.nav, intro: r.intro,
     ilsrc: il ? il.src : "", ilalt: il ? il.alt : "", iltext: il ? il.text : "", ilhref: il ? "custom-design.html" : "", ilcta: il ? "Explore custom design" : "",
   };
   return read(join(REDESIGN_ROOT, "templates", "room.html")).replace(/\{\{(\w+)\}\}/g, (_, k) => esc(vars[k] ?? ""));

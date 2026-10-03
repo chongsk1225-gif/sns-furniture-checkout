@@ -11,10 +11,13 @@
 //   data/luxe-*.json              overlay data (media manifest, custom options)
 //   data/collection-<room>.json   slim per-room datasets derived from public/data
 //   data/collections-index.json   slim collections index derived from public/data
-//   sitemap.xml                   the existing sitemap plus the new pages (no URL is removed)
-import { mkdirSync, writeFileSync, cpSync, readFileSync } from "node:fs";
+//   sitemap.xml                   the existing sitemap plus the new pages (hidden products removed)
+//   robots.txt llms.txt ai.txt    SEO / AI-search files
+//   404.html                      branded not-found page
+import { mkdirSync, writeFileSync, cpSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { REDESIGN_ROOT, PUBLIC_ROOT, listPages, readPage, COMMERCE } from "./lib/includes.mjs";
+import { REDESIGN_ROOT, listPages, readPage, COMMERCE } from "./lib/includes.mjs";
+import { buildSitemap } from "./lib/sitemap.mjs";
 import { collectionData, collectionsIndexData, ROOM_BY_SLUG } from "./lib/collections.mjs";
 
 const out = resolve(process.argv[2] || join(REDESIGN_ROOT, "dist"));
@@ -30,17 +33,10 @@ for (const slug of Object.keys(ROOM_BY_SLUG)) {
 }
 writeFileSync(join(out, "data", "collections-index.json"), JSON.stringify(collectionsIndexData()));
 
-// sitemap: keep every existing URL, add the new indexable pages
-const NEW_URLS = ["custom-design.html", "stock-furniture.html", "collections.html"];
-// ...except the 188 intentionally hidden products, which must not be advertised to crawlers
-const blocked = new Set(JSON.parse(readFileSync(join(PUBLIC_ROOT, "data", "catalog-blocked.json"), "utf8")));
-let dropped = 0;
-const old = readFileSync(join(PUBLIC_ROOT, "sitemap.xml"), "utf8").replace(/ *<url><loc>[^<]*product\.html\?sku=([^<]+)<\/loc><\/url>\r?\n?/g, (m, sku) => {
-  if (blocked.has(decodeURIComponent(sku))) { dropped++; return ""; }
-  return m;
-});
-const have = new Set([...old.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]));
-const add = NEW_URLS.map((p) => `https://snsfurniture.com/${p}`).filter((u) => !have.has(u));
-writeFileSync(join(out, "sitemap.xml"), old.replace("</urlset>", add.map((u) => `  <url><loc>${u}</loc></url>\n`).join("") + "</urlset>"));
+// SEO files + 404 page + sitemap (existing URLs kept, hidden products dropped, new pages added)
+for (const f of ["robots.txt", "llms.txt", "ai.txt"]) cpSync(join(REDESIGN_ROOT, "seo", f), join(out, f));
+const sm = buildSitemap();
+writeFileSync(join(out, "sitemap.xml"), sm.xml);
+const added = sm.added, dropped = sm.dropped;
 
-console.log(`built ${pages.length} pages -> ${out}  (commerce ${COMMERCE ? "on" : "off"}; sitemap +${add.length} new URLs, -${dropped} hidden-product URLs)`);
+console.log(`built ${pages.length} pages -> ${out}  (commerce ${COMMERCE ? "on" : "off"}; sitemap +${added} new URLs, -${dropped} hidden-product URLs)`);

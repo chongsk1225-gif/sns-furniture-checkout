@@ -94,6 +94,14 @@
     var ld = { "@context": "https://schema.org", "@type": "Product", "name": p.name, "sku": p.sku, "category": p.category, "description": p.description, "image": p.gallery || [p.image], "brand": { "@type": "Brand", "name": p.brand || "Furniture of America" }, "seller": { "@id": "https://snsfurniture.com/#business" } };
     if (p.sale != null) ld.offers = { "@type": "Offer", "url": "https://snsfurniture.com/product.html?sku=" + encodeURIComponent(p.sku), "priceCurrency": "USD", "price": p.sale, "availability": "https://schema.org/LimitedAvailability", "seller": { "@id": "https://snsfurniture.com/#business" } };
     var s = d.createElement("script"); s.type = "application/ld+json"; s.textContent = JSON.stringify(ld); d.head.appendChild(s);
+    var ROOMS = { "Living Room": ["living-room", "Living"], "Dining Room": ["dining-room", "Dining"], "Bedroom": ["bedroom", "Bedroom"], "Mattresses": ["mattresses", "Mattresses"], "Accent Furniture": ["accent", "Accent"] };
+    var roomInfo = ROOMS[p.category];
+    var crumbs = [["Home", "https://snsfurniture.com/"], ["Stock Furniture", "https://snsfurniture.com/stock-furniture.html"]];
+    if (roomInfo) crumbs.push([roomInfo[1], "https://snsfurniture.com/" + roomInfo[0] + ".html"]);
+    crumbs.push([p.name, "https://snsfurniture.com/product.html?sku=" + encodeURIComponent(p.sku)]);
+    var bc = d.createElement("script"); bc.type = "application/ld+json";
+    bc.textContent = JSON.stringify({ "@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": crumbs.map(function (c, i) { return { "@type": "ListItem", "position": i + 1, "name": c[0], "item": c[1] }; }) });
+    d.head.appendChild(bc);
 
     var figs = items.map(function (it, i) {
       var cls = "lx-media" + (it.wide ? " lx-media--wide" : "") + " lx-media--" + it.role;
@@ -133,7 +141,7 @@
       '<div class="lx-pdp__actions" data-actions>' + actions + "</div>" +
       '<p class="lx-pdp__note" data-added hidden><a class="lx-textlink" href="cart.html">View cart</a></p>' +
       '<p class="lx-pdp__note">' + esc(canBuy ? CHECKOUT_NOTE : "Delivery options depend on the item and destination. California is our primary service area.") + "</p>" +
-      (unverified ? '<p class="lx-pdp__note">Photography for this item is pending verification.</p>' : "") +
+      (unverified ? '<p class="lx-pdp__note">A larger verified photograph of this item is not yet available.</p>' : "") +
       (p.description ? '<p class="lx-pdp__desc">' + esc(p.description) + "</p>" : "") +
       '<div class="lx-acc">' +
       (specs ? '<details open><summary>Details</summary><div class="lx-acc__body"><dl class="lx-spec">' + specs + "</dl></div></details>" : "") +
@@ -141,10 +149,13 @@
       "<details><summary>Delivery</summary><div class=\"lx-acc__body\">" + esc(DELIVERY) + "</div></details></div>" +
       (p.collection ? '<p style="margin-top:28px"><a class="lx-textlink" href="catalog.html?collection=' + encodeURIComponent(p.collection) + '">View the ' + esc(p.collection) + " collection</a></p>" : "");
 
+    var MAXT = 8, thumbsHtml = lb.length > 1 ? '<div class="lx-thumbs" data-thumbs role="group" aria-label="Product images">' + lb.slice(0, MAXT).map(function (t, i) {
+      return '<button type="button" class="lx-thumb" data-goto="' + i + '" aria-label="Show image ' + (i + 1) + ' of ' + lb.length + '"' + (i === 0 ? ' aria-current="true"' : "") + '><img src="' + esc(t.src) + '" alt="" width="64" height="64" loading="lazy" decoding="async" fetchpriority="low"></button>';
+    }).join("") + (lb.length > MAXT ? '<button type="button" class="lx-thumb lx-thumb--more" data-lb-open aria-label="View all ' + lb.length + ' images">+' + (lb.length - MAXT) + "</button>" : "") + "</div>" : "";
     var roomLink = { "Living Room": ["living-room.html", "Living"], "Dining Room": ["dining-room.html", "Dining"], "Bedroom": ["bedroom.html", "Bedroom"], "Mattresses": ["mattresses.html", "Mattresses"], "Accent Furniture": ["accent.html", "Accent"] }[p.category];
     main.innerHTML =
       '<p class="lx-pdp__crumb"><a href="' + (roomLink ? roomLink[0] : "stock-furniture.html") + '">&larr; ' + esc(roomLink ? roomLink[1] : "Stock furniture") + "</a></p>" +
-      '<div class="lx-pdp__layout"><div class="lx-pdp__mediawrap"><div class="lx-pdp__media" data-track>' + figs + slotRow + '</div><span class="lx-pdp__counter" data-counter aria-hidden="true"></span></div>' +
+      '<div class="lx-pdp__layout"><div class="lx-pdp__mediawrap">' + thumbsHtml + '<div class="lx-pdp__media" data-track>' + figs + slotRow + '</div><span class="lx-pdp__counter" data-counter aria-hidden="true"></span></div>' +
       '<div class="lx-pdp__info">' + info + "</div></div>";
 
     /* buy bar (mobile): price + primary action once the main actions scroll away */
@@ -180,6 +191,46 @@
       if (e.key === "Escape") close(); else if (e.key === "ArrowLeft") show(cur - 1); else if (e.key === "ArrowRight") show(cur + 1);
       else if (e.key === "Tab") { var f = [].slice.call(box.querySelectorAll("button")); var i = f.indexOf(d.activeElement); e.preventDefault(); f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus(); }
     });
+
+    /* thumbnails: jump to image; highlight the one in view; "+N" opens the full-screen viewer */
+    var thumbs = main.querySelector("[data-thumbs]");
+    if (thumbs) {
+      thumbs.addEventListener("click", function (e) {
+        var more = e.target.closest("[data-lb-open]"); if (more) { open(MAXT, more); return; }
+        var b = e.target.closest("[data-goto]"); if (!b) return;
+        var fig = main.querySelector('[data-lb="' + b.getAttribute("data-goto") + '"]'); if (!fig) return;
+        var wide = matchMedia("(min-width: 901px)").matches;
+        if (wide) window.scrollTo({ top: fig.getBoundingClientRect().top + scrollY - 150, behavior: reduce ? "auto" : "smooth" });
+        else fig.scrollIntoView({ behavior: reduce ? "auto" : "smooth", inline: "start", block: "nearest" });
+      });
+      if ("IntersectionObserver" in window) {
+        var seen = new IntersectionObserver(function (es) {
+          es.forEach(function (en) {
+            if (!en.isIntersecting) return;
+            var n = en.target.getAttribute("data-lb");
+            [].forEach.call(thumbs.querySelectorAll("[data-goto]"), function (t) { if (t.getAttribute("data-goto") === n) t.setAttribute("aria-current", "true"); else t.removeAttribute("aria-current"); });
+          });
+        }, { rootMargin: "-35% 0px -55% 0px", threshold: 0 });
+        [].forEach.call(main.querySelectorAll("[data-lb]"), function (f) { seen.observe(f); });
+      }
+    }
+
+    /* related products: only the same named collection, from the same visible catalog */
+    if (p.collection && roomInfo) {
+      var idle = window.requestIdleCallback || function (f) { setTimeout(f, 600); };
+      idle(function () {
+        fetch("data/collection-" + roomInfo[0] + ".json").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+          if (!j) return;
+          var rel = j.items.filter(function (i) { return i[3] === p.collection && i[0] !== p.sku; }).slice(0, 4);
+          if (!rel.length) return;
+          var sec = d.createElement("section"); sec.className = "lx-pdp__related"; sec.setAttribute("aria-labelledby", "lx-rel-h");
+          sec.innerHTML = '<p class="lx-eyebrow" id="lx-rel-h" style="margin-bottom:clamp(24px,3vw,44px)">More from the ' + esc(p.collection) + ' collection</p><div class="lx-related-grid">' + rel.map(function (i) {
+            return '<a class="lx-tile" href="product.html?sku=' + encodeURIComponent(i[0]) + '"><span class="lx-tile__media"><img src="' + esc(i[5]) + '" width="1000" height="1000" alt="' + esc(i[1]) + '" loading="lazy" decoding="async"></span><span class="lx-tile__meta"><span class="lx-tile__eyebrow">' + esc(i[2]) + '</span><span class="lx-tile__name">' + esc(i[1]) + '</span><span class="lx-tile__price">' + price(i[4]) + "</span></span></a>";
+          }).join("") + "</div>";
+          main.appendChild(sec);
+        }).catch(function () {});
+      });
+    }
 
     /* mobile gallery counter */
     var track = main.querySelector("[data-track]"), counter = main.querySelector("[data-counter]");
