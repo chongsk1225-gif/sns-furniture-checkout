@@ -1,0 +1,12 @@
+{
+  "_readme": "Confirmed custom-furniture options. NOTHING here is confirmed yet, so the public Custom Furniture page shows no option names, materials, fabrics or dimensions. When SNS Furniture confirms what it offers, set confirmed to true and fill groups; the page renders each group (label, summary, optional swatches/images) automatically. In review mode (default for this prototype) the page shows labeled empty slots so the intended structure is visible; ?clean=1 hides them.",
+  "confirmed": false,
+  "groups": [],
+  "_example_group": {
+    "key": "finish",
+    "label": "Finish",
+    "summary": "One or two plain sentences, written from confirmed information only.",
+    "options": [{ "label": "", "image": "luxe/media/custom/....jpg" }]
+  },
+  "process": { "confirmed": false, "steps": [] }
+}

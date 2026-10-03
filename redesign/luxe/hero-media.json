@@ -1,0 +1,29 @@
+{
+  "_readme": "Homepage hero media slot. While poster and video are null the page shows an art-directed placeholder (no furniture). To install the finished Sigma I006/I007 cinematic: drop the files in redesign/luxe/media/hero/, fill in the fields below, and the page renders the poster server-side (fast LCP, no layout shift) and loads the video lazily after the page is interactive. Video is skipped for reduced-motion and data-saver users, who see the poster only. Provide a portrait (9:16) cut under video.mobile / poster.mobile for phones.",
+  "label": "Sigma I006/I007",
+  "alt": "",
+  "poster": null,
+  "video": null,
+  "example_when_filled": {
+    "poster": {
+      "width": 1920,
+      "height": 1080,
+      "src": "luxe/media/hero/sigma-poster-1920.jpg",
+      "sources": [
+        { "srcset": "luxe/media/hero/sigma-poster-1920.avif 1920w, luxe/media/hero/sigma-poster-1280.avif 1280w", "type": "image/avif" },
+        { "srcset": "luxe/media/hero/sigma-poster-1920.webp 1920w, luxe/media/hero/sigma-poster-1280.webp 1280w", "type": "image/webp" }
+      ],
+      "mobile": { "src": "luxe/media/hero/sigma-poster-mobile.jpg" }
+    },
+    "video": {
+      "desktop": [
+        { "src": "luxe/media/hero/sigma-1920.webm", "type": "video/webm" },
+        { "src": "luxe/media/hero/sigma-1920.mp4", "type": "video/mp4" }
+      ],
+      "mobile": [
+        { "src": "luxe/media/hero/sigma-mobile.webm", "type": "video/webm" },
+        { "src": "luxe/media/hero/sigma-mobile.mp4", "type": "video/mp4" }
+      ]
+    }
+  }
+}

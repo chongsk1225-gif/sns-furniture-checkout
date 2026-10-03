@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!--@include head-->
+<title>SNS Furniture</title>
+<meta name="description" content="SNS Furniture product details.">
+<meta name="robots" content="noindex,follow">
+<link rel="canonical" href="https://snsfurniture.com/product.html">
+<script>
+/* start the product-data request before CSS/JS finish loading */
+(function(){var s=(new URLSearchParams(location.search).get('sku')||'LV02404').trim();if(!s)return;
+window.__lxSku=s;
+window.__lxShard=fetch('data/details/'+encodeURIComponent(s.charAt(0).toLowerCase())+'.json').then(function(r){return r.ok?r.json():[]}).catch(function(){return[]});})();
+</script>
+</head>
+<body data-page="product" data-nav="">
+<!--@include header-->
+
+<main id="main" class="lx-pdp" data-pdp>
+  <div class="lx-pdp__layout" aria-busy="true">
+    <div class="lx-pdp__mediawrap"><div class="lx-pdp__media"><div class="lx-media lx-media--wide lx-media--scene"></div></div></div>
+    <div class="lx-pdp__info"></div>
+  </div>
+</main>
+
+<div class="lx-buybar" data-buybar role="region" aria-label="Purchase"></div>
+<div class="lx-lightbox" data-lightbox role="dialog" aria-modal="true" aria-label="Enlarged image" hidden>
+  <button class="lx-lightbox__btn lx-lightbox__close" type="button" data-lb-close>Close</button>
+  <button class="lx-lightbox__btn lx-lightbox__prev" type="button" data-lb-prev aria-label="Previous image">&#8249;</button>
+  <img alt="" data-lb-img>
+  <button class="lx-lightbox__btn lx-lightbox__next" type="button" data-lb-next aria-label="Next image">&#8250;</button>
+  <p class="lx-lightbox__count" data-lb-count aria-live="polite"></p>
+</div>
+
+<!--@include footer-->
+<script src="site.js" defer></script>
+<script src="luxe/luxe.js" defer></script>
+<script src="luxe/luxe-product.js" defer></script>
+</body>
+</html>

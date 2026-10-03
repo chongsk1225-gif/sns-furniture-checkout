@@ -1,0 +1,29 @@
+{
+  "_readme": "Per-SKU luxury media manifest, layered on top of each product's existing manufacturer gallery. The product database is never modified. Image references are file names (matched against the product's own gallery) or absolute URLs. Roles render in this order: video, lifestyle, product, detail, manufacturer (every gallery image not assigned a role), finish, diagram. Roles with no entries simply don't render. Optional per-SKU keys: cardImage (image used on grids/tiles), hideSpecs (spec rows to suppress), custom (confirmed custom options for this SKU).",
+  "_schema": {
+    "SKU": {
+      "cardImage": "file name or URL",
+      "video": [{ "src": "luxe/media/...mp4", "poster": "luxe/media/...jpg", "type": "video/mp4", "caption": "" }],
+      "roles": {
+        "lifestyle": ["file names / URLs"],
+        "product": [],
+        "detail": [],
+        "finish": [{ "src": "", "label": "" }],
+        "diagram": []
+      },
+      "hideSpecs": ["dimensions"],
+      "custom": { "confirmed": false }
+    }
+  },
+  "LV02404": {
+    "note": "Representative high-end product for the prototype. Roles assigned by viewing each real manufacturer image. Stored text dimensions read 12\"W x 41\"D x 30\"H but the manufacturer's own diagram (lv02404_dim_1.jpg) shows 122\"W, so the text row is suppressed here (source data not edited) and the manufacturer diagram is shown instead.",
+    "cardImage": "lv02404_6.jpg",
+    "roles": {
+      "lifestyle": ["lv02404_6.jpg", "lv02404_7.jpg"],
+      "product": ["lv02404_1_1.jpg", "lv02404_2_1.jpg", "lv02404_3_1.jpg", "lv02404_4_1.jpg"],
+      "detail": ["lv02404_5_1.jpg", "lv02404_feat.jpg"],
+      "diagram": ["lv02404_dim_1.jpg"]
+    },
+    "hideSpecs": ["dimensions"]
+  }
+}
