@@ -72,6 +72,53 @@
   overlay(d.getElementById("lx-menu"), all("[data-lx-menu-open]"), all("[data-lx-menu-close]"), ".lx-menu__close");
   overlay(d.getElementById("lx-search"), all("[data-lx-search-open]"), all("[data-lx-search-close]"), "#lx-search-input");
 
+  /* ---------- sub-navigation + menu: mark the current page ---------- */
+  var here = (location.pathname.split("/").pop() || "index.html");
+  [].forEach.call(d.querySelectorAll("[data-lx-subnav] a, .lx-menu a"), function (a) {
+    var href = (a.getAttribute("href") || "").split("?")[0];
+    if (href === here) a.setAttribute("aria-current", "page");
+  });
+
+  /* ---------- search suggestions (catalog index is fetched only when typing starts) ---------- */
+  var sInput = d.getElementById("lx-search-input"), sList = d.querySelector("[data-lx-suggest]");
+  if (sInput && sList) {
+    var index = null, loading = null, timer = null;
+    var escH = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+    var money = function (n) { if (n == null) return ""; var v = Number(n); return "$" + v.toLocaleString("en-US", { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 }); };
+    var load = function () {
+      if (index) return Promise.resolve(index);
+      return loading || (loading = fetch("data/catalog-index.json").then(function (r) { return r.json(); }).then(function (rows) {
+        index = rows.map(function (p) { return { p: p, h: (p.name + " " + p.type + " " + p.sku + " " + (p.collection || "") + " " + (p.finish || "")).toLowerCase() }; });
+        return index;
+      }).catch(function () { loading = null; return []; }));
+    };
+    var render = function () {
+      var toks = sInput.value.toLowerCase().split(/\s+/).filter(Boolean);
+      if (!toks.length || sInput.value.trim().length < 2) { sList.hidden = true; sList.innerHTML = ""; return; }
+      load().then(function (rows) {
+        var hits = [], total = 0;
+        for (var i = 0; i < rows.length; i++) {
+          var ok = true;
+          for (var t = 0; t < toks.length; t++) if (rows[i].h.indexOf(toks[t]) < 0) { ok = false; break; }
+          if (ok) { total++; if (hits.length < 6) hits.push(rows[i].p); }
+        }
+        if (sInput.value.toLowerCase().split(/\s+/).filter(Boolean).join(" ") !== toks.join(" ")) return;
+        sList.innerHTML = hits.map(function (p) {
+          return '<li><a href="product.html?sku=' + encodeURIComponent(p.sku) + '"><img src="' + escH(p.image) + '" alt="" width="56" height="56" loading="lazy" decoding="async"><span><span class="lx-suggest__name">' + escH(p.name) + '</span><span class="lx-suggest__meta">' + escH(p.collection ? p.collection + " collection" : p.type) + '</span></span><span class="lx-suggest__price">' + money(p.sale) + '</span></a></li>';
+        }).join("") + (total ? '<li><a class="lx-suggest__all" href="catalog.html?q=' + encodeURIComponent(sInput.value.trim()) + '">See all ' + total.toLocaleString("en-US") + ' results</a></li>' : '<li><a class="lx-suggest__all" href="catalog.html">No matches — browse all stock furniture</a></li>');
+        sList.hidden = false;
+      });
+    };
+    sInput.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(render, 120); });
+    sInput.addEventListener("focus", load);
+    sInput.addEventListener("keydown", function (e) { if (e.key === "ArrowDown") { var a = sList.querySelector("a"); if (a) { e.preventDefault(); a.focus(); } } });
+    sList.addEventListener("keydown", function (e) {
+      var links = [].slice.call(sList.querySelectorAll("a")), i = links.indexOf(d.activeElement);
+      if (e.key === "ArrowDown" && i < links.length - 1) { e.preventDefault(); links[i + 1].focus(); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); (i > 0 ? links[i - 1] : sInput).focus(); }
+    });
+  }
+
   /* ---------- scroll reveal ---------- */
   var io = null;
   function observe(el) {

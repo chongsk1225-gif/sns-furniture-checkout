@@ -1,7 +1,8 @@
 {
-  "_readme": "Homepage hero media slot. While poster and video are null the page shows an art-directed placeholder (no furniture). To install the finished Sigma I006/I007 cinematic: drop the files in redesign/luxe/media/hero/, fill in the fields below, and the page renders the poster server-side (fast LCP, no layout shift) and loads the video lazily after the page is interactive. Video is skipped for reduced-motion and data-saver users, who see the poster only. Provide a portrait (9:16) cut under video.mobile / poster.mobile for phones.",
+  "_readme": "Homepage hero media slot for the Sigma 1006/1007 cinematic. Nothing here is generated or substituted: until the supplied files are installed the page shows an art-directed placeholder with no furniture. FIDELITY RULES: the footage and stills are shown exactly as supplied. The page never recolors, mirrors, flips, stretches, overlays or re-crops the furniture beyond CSS object-fit:cover; set \"focus\" (CSS object-position, e.g. \"50% 62%\") so the Sigma pieces stay inside the crop on both desktop and the 9:16 mobile cut, and supply a separate portrait cut rather than relying on cropping. To install: drop the files in redesign/luxe/media/hero/, fill in poster/video below (see example_when_filled). The poster is rendered server-side (fast LCP, no layout shift); video loads after the page is interactive, and is skipped for reduced-motion and data-saver users, who see the poster only.",
   "label": "Sigma I006/I007",
   "alt": "",
+  "focus": null,
   "poster": null,
   "video": null,
   "example_when_filled": {
@@ -10,19 +11,39 @@
       "height": 1080,
       "src": "luxe/media/hero/sigma-poster-1920.jpg",
       "sources": [
-        { "srcset": "luxe/media/hero/sigma-poster-1920.avif 1920w, luxe/media/hero/sigma-poster-1280.avif 1280w", "type": "image/avif" },
-        { "srcset": "luxe/media/hero/sigma-poster-1920.webp 1920w, luxe/media/hero/sigma-poster-1280.webp 1280w", "type": "image/webp" }
+        {
+          "srcset": "luxe/media/hero/sigma-poster-1920.avif 1920w, luxe/media/hero/sigma-poster-1280.avif 1280w",
+          "type": "image/avif"
+        },
+        {
+          "srcset": "luxe/media/hero/sigma-poster-1920.webp 1920w, luxe/media/hero/sigma-poster-1280.webp 1280w",
+          "type": "image/webp"
+        }
       ],
-      "mobile": { "src": "luxe/media/hero/sigma-poster-mobile.jpg" }
+      "mobile": {
+        "src": "luxe/media/hero/sigma-poster-mobile.jpg"
+      }
     },
     "video": {
       "desktop": [
-        { "src": "luxe/media/hero/sigma-1920.webm", "type": "video/webm" },
-        { "src": "luxe/media/hero/sigma-1920.mp4", "type": "video/mp4" }
+        {
+          "src": "luxe/media/hero/sigma-1920.webm",
+          "type": "video/webm"
+        },
+        {
+          "src": "luxe/media/hero/sigma-1920.mp4",
+          "type": "video/mp4"
+        }
       ],
       "mobile": [
-        { "src": "luxe/media/hero/sigma-mobile.webm", "type": "video/webm" },
-        { "src": "luxe/media/hero/sigma-mobile.mp4", "type": "video/mp4" }
+        {
+          "src": "luxe/media/hero/sigma-mobile.webm",
+          "type": "video/webm"
+        },
+        {
+          "src": "luxe/media/hero/sigma-mobile.mp4",
+          "type": "video/mp4"
+        }
       ]
     }
   }

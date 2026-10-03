@@ -5,7 +5,7 @@
   "use strict";
   var d = document, main = d.querySelector("[data-pdp]");
   if (!main) return;
-  var sku = window.__lxSku || (new URLSearchParams(location.search).get("sku") || "LV02404").trim();
+  var sku = window.__lxSku || (new URLSearchParams(location.search).get("sku") || "").trim();
   var reduce = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
   var DIAGRAM = /_(dim|feat|draw|spec|cc)(_\d+)?\.(jpe?g|png)$/i, LIFE = /_life\.(jpe?g|png)$/i;
   var DELIVERY = "Ask about delivery options for this item. California is our primary service area; qualifying nationwide delivery may be available depending on the product and destination.";
@@ -25,18 +25,21 @@
     return out;
   }
 
+  if (!sku) { missing(); return; }
   Promise.all([
     window.__lxShard || fetch("data/details/" + encodeURIComponent(sku.charAt(0).toLowerCase()) + ".json").then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }),
     fetch("data/luxe-media.json").then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; })
   ]).then(function (res) {
     var rec = (res[0] || []).filter(function (x) { return x.sku === sku; })[0];
-    if (!rec) return missing();
+    // Hidden products (wrong-photo risk, no approved price) are never shown to customers.
+    if (!rec || rec.hidden === true) return missing();
     render(rec, (res[1] || {})[sku] || {});
   });
 
   function missing() {
     d.title = "Product not found | SNS Furniture";
-    main.innerHTML = '<div class="lx-pdp__missing"><h1 class="lx-h2">Product not found</h1><p>This item may no longer be available.</p><a class="lx-btn" href="catalog.html">Return to the collection</a></div>';
+    var rb = d.querySelector('meta[name="robots"]'); if (rb) rb.setAttribute("content", "noindex,follow");
+    main.innerHTML = '<div class="lx-pdp__missing"><h1 class="lx-h2">Product not found</h1><p>This item may no longer be available.</p><a class="lx-btn" href="catalog.html">Browse stock furniture</a></div>';
   }
 
   /* ---------- media assembly ---------- */
@@ -108,7 +111,8 @@
     if (!media.hasDetail) slots.push("Material &amp; detail close-ups");
     if (!media.hasFinish) slots.push("Finish &amp; material imagery");
     slots.push("Custom options (when confirmed)");
-    var slotRow = '<div class="lx-slots-row" data-review-only>' + slots.map(function (t) { return '<div class="lx-slot">Media slot<br>' + t + "<br>(pending asset)</div>"; }).join("") + "</div>";
+    // Review-only placeholders: shown only for products whose manifest opts in (m.showSlots).
+    var slotRow = m.showSlots ? '<div class="lx-slots-row" data-review-only>' + slots.map(function (t) { return '<div class="lx-slot">Media slot<br>' + t + "<br>(pending asset)</div>"; }).join("") + "</div>" : "";
 
     function spec(l, v) { return v ? "<dt>" + esc(l) + "</dt><dd>" + esc(v) + "</dd>" : ""; }
     var specs = spec("SKU", p.sku) + spec("Style", p.style) + spec("Finish", p.finish) + spec("Material", p.material) +
@@ -135,11 +139,11 @@
       (specs ? '<details open><summary>Details</summary><div class="lx-acc__body"><dl class="lx-spec">' + specs + "</dl></div></details>" : "") +
       (feats.length ? '<details><summary>Features</summary><div class="lx-acc__body"><ul class="lx-feat">' + feats.map(function (f) { return "<li>" + esc(f) + "</li>"; }).join("") + "</ul></div></details>" : "") +
       "<details><summary>Delivery</summary><div class=\"lx-acc__body\">" + esc(DELIVERY) + "</div></details></div>" +
-      (p.collection ? '<p style="margin-top:28px"><a class="lx-textlink" href="catalog.html?q=' + encodeURIComponent(p.collection) + '">View the ' + esc(p.collection) + " collection</a></p>" : "");
+      (p.collection ? '<p style="margin-top:28px"><a class="lx-textlink" href="catalog.html?collection=' + encodeURIComponent(p.collection) + '">View the ' + esc(p.collection) + " collection</a></p>" : "");
 
-    var roomLink = { "Living Room": ["living-room.html", "Living"], "Dining Room": ["dining-room.html", "Dining"], "Bedroom": ["bedroom.html", "Bedroom"] }[p.category];
+    var roomLink = { "Living Room": ["living-room.html", "Living"], "Dining Room": ["dining-room.html", "Dining"], "Bedroom": ["bedroom.html", "Bedroom"], "Mattresses": ["mattresses.html", "Mattresses"], "Accent Furniture": ["accent.html", "Accent"] }[p.category];
     main.innerHTML =
-      '<p class="lx-pdp__crumb"><a href="' + (roomLink ? roomLink[0] : "catalog.html") + '">&larr; ' + esc(roomLink ? roomLink[1] : "Collections") + "</a></p>" +
+      '<p class="lx-pdp__crumb"><a href="' + (roomLink ? roomLink[0] : "stock-furniture.html") + '">&larr; ' + esc(roomLink ? roomLink[1] : "Stock furniture") + "</a></p>" +
       '<div class="lx-pdp__layout"><div class="lx-pdp__mediawrap"><div class="lx-pdp__media" data-track>' + figs + slotRow + '</div><span class="lx-pdp__counter" data-counter aria-hidden="true"></span></div>' +
       '<div class="lx-pdp__info">' + info + "</div></div>";
 

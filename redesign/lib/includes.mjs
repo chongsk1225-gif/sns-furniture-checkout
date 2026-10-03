@@ -6,10 +6,16 @@
 //   <!--@jsonld file.html-->  -> the application/ld+json blocks from public/file.html,
 //                                so structured data stays single-sourced
 //   <!--@product SKU-->       -> a product tile rendered from the catalog data
+//   <!--@seo file.html-->     -> <title>, description, robots, canonical (+ JSON-LD) passed
+//                                through from public/file.html, brand-normalized
+//   <!--@wrap file.html-->    -> the <main> content of an existing public page (cart, checkout,
+//                                policies...) re-skinned by .lx-legacy; scripts/ids/forms untouched
+//   <!--@count brand NAME-->  <!--@count room NAME-->  -> visible product counts
 // Used by serve.mjs (on request) and build.mjs (flattened output). Nothing here
 // writes to public/ or touches catalog data.
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
+import { ROOMS, ROOM_SLUGS } from "./rooms.mjs";
 import { fileURLToPath } from "node:url";
 
 export const REDESIGN_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -84,13 +90,13 @@ function heroMarkup() {
   const pause = hasVideo
     ? `<button class="lx-hero__toggle" type="button" data-hero-toggle aria-label="Pause background video" hidden><span aria-hidden="true"></span></button>`
     : "";
-  return `<section class="lx-hero" data-hero data-has-video="${hasVideo ? "1" : "0"}" aria-label="SNS Furniture">
+  return `<section class="lx-hero" data-hero data-has-video="${hasVideo ? "1" : "0"}" aria-label="SNS Furniture"${cfg.focus ? ` style="--hero-pos:${esc(cfg.focus)}"` : ""}>
     <div class="lx-hero__media" data-hero-media>${media}${videoTag}</div>
     <div class="lx-hero__scrim"></div>
     <div class="lx-hero__copy">
       <p class="lx-hero__brand">SNS Furniture</p>
       <h1 class="lx-hero__title">Custom, without compromise.</h1>
-      <a class="lx-btn lx-btn--light" href="custom-furniture.html">Discover custom</a>
+      <a class="lx-btn lx-btn--light" href="custom-design.html">Discover custom</a>
     </div>
     ${note}${pause}
     <span class="lx-hero__cue" aria-hidden="true"></span>
@@ -104,7 +110,7 @@ function productTile(sku, opts = {}) {
   const media = luxeMedia()[sku] || {};
   const img = media.cardImage ? resolveRef(sku, media.cardImage) : idx.image;
   const coll = idx.collection ? `${esc(idx.collection)} collection` : esc(idx.type || "");
-  return `<a class="lx-tile${opts.cls ? " " + opts.cls : ""}" href="product-luxe.html?sku=${encodeURIComponent(sku)}">
+  return `<a class="lx-tile${opts.cls ? " " + opts.cls : ""}" href="product.html?sku=${encodeURIComponent(sku)}">
       <span class="lx-tile__media"><img src="${esc(img)}" width="1000" height="1000" alt="${esc(idx.name)}" loading="lazy" decoding="async"></span>
       <span class="lx-tile__meta"><span class="lx-tile__eyebrow">${coll}</span><span class="lx-tile__name">${esc(idx.name)}</span><span class="lx-tile__price">${esc(fmtPrice(idx.sale))}</span></span>
     </a>`;
@@ -118,7 +124,7 @@ function collectionsMarkup(spec) {
   const rows = spec.split(",").map((s) => s.trim().split(":")).filter((a) => a.length >= 3);
   const idx = catalogIndex();
   const lis = rows.map(([name, , room], i) =>
-    `<li><a href="catalog.html?q=${encodeURIComponent(name)}" data-preview="${i}"><span class="lx-clist__name">${esc(name)}</span><span class="lx-clist__meta">${esc(room)}</span></a></li>`).join("\n      ");
+    `<li><a href="catalog.html?collection=${encodeURIComponent(name)}" data-preview="${i}"><span class="lx-clist__name">${esc(name)}</span><span class="lx-clist__meta">${esc(room)}</span></a></li>`).join("\n      ");
   const imgs = rows.map(([name, sku], i) => {
     const r = idx.find((x) => x.sku === sku);
     const media = luxeMedia()[sku] || {};
@@ -136,10 +142,65 @@ function collectionsMarkup(spec) {
 }
 
 /* ───────────── JSON-LD passthrough ───────────── */
+const OLD_BRAND = /Sash and Shade/g;
+export const brand = (t) => String(t).replace(OLD_BRAND, "SNS Furniture");
 function jsonLd(file) {
   const p = join(PUBLIC_ROOT, file);
   if (!existsSync(p)) return `<!-- ${esc(file)} not found -->`;
-  return (read(p).match(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g) || []).join("\n");
+  const blocks = read(p).match(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g) || [];
+  // SNS Furniture is the public brand. Structured data must match the visible text,
+  // so names/FAQ strings are normalized; the old trading name is kept as alternateName.
+  return blocks.map((b) => {
+    const inner = b.replace(/^<script[^>]*>/, "").replace(/<\/script>$/, "");
+    let data;
+    try { data = JSON.parse(inner); } catch { return b; }
+    const walk = (v) => Array.isArray(v) ? v.map(walk) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)])) : typeof v === "string" ? brand(v) : v;
+    const out = walk(data);
+    const types = [].concat(out["@type"] || []);
+    if (types.includes("LocalBusiness") && out.name === "SNS Furniture") out.alternateName = "Sash and Shade";
+    return `<script type="application/ld+json">${JSON.stringify(out)}</script>`;
+  }).join("\n");
+}
+
+/* ───────────── SEO passthrough + legacy page wrapping ───────────── */
+function seoFrom(file) {
+  const p = join(PUBLIC_ROOT, file);
+  if (!existsSync(p)) return `<!-- ${esc(file)} not found -->`;
+  const html = read(p);
+  const title = (html.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || "SNS Furniture";
+  const attr = (re) => (html.match(re) || [])[1];
+  const desc = attr(/<meta name="description" content="([^"]*)"/);
+  const robots = attr(/<meta name="robots" content="([^"]*)"/);
+  const canon = attr(/<link rel="canonical" href="([^"]*)"/);
+  const t = brand(title);
+  return [
+    `<title>${t}</title>`,
+    desc ? `<meta name="description" content="${brand(desc)}">` : "",
+    robots ? `<meta name="robots" content="${robots}">` : "",
+    canon ? `<link rel="canonical" href="${canon}">` : "",
+    `<meta property="og:type" content="website"><meta property="og:site_name" content="SNS Furniture"><meta property="og:title" content="${t}">`,
+    desc ? `<meta property="og:description" content="${brand(desc)}">` : "",
+    canon ? `<meta property="og:url" content="${canon}">` : "",
+    jsonLd(file),
+  ].filter(Boolean).join("\n");
+}
+function wrapLegacy(file) {
+  const p = join(PUBLIC_ROOT, file);
+  if (!existsSync(p)) return `<!-- ${esc(file)} not found -->`;
+  const m = read(p).match(/<main[^>]*>([\s\S]*?)<\/main>/);
+  if (!m) return `<!-- no <main> in ${esc(file)} -->`;
+  // About is brand copy, so it follows the SNS Furniture public brand; the legal/policy pages are
+  // deliberately left word-for-word (their entity name is a legal matter, not a styling one).
+  return (file === "about.html" ? brand(m[1]) : m[1])
+    .replace(/\sstyle="[^"]*"/g, "")                       // presentation only; wording/ids/forms untouched
+    .replace(/<div class="wrap[^"]*"[^>]*>/g, '<div class="lx-legacy__inner">')
+    .replace(/<section class="(?:shop|section|policy)">/g, '<section class="lx-legacy__section">')
+    .replace(/<div class="eyebrow">/g, '<p class="lx-eyebrow">').replace(/(<p class="lx-eyebrow">[^<]*)<\/div>/g, "$1</p>");
+}
+function countMarkup(kind, name) {
+  const idx = catalogIndex();
+  const n = idx.filter((r) => (kind === "brand" ? r.brand === name : r.category === name)).length;
+  return n.toLocaleString("en-US");
 }
 
 /* ───────────── page rendering ───────────── */
@@ -153,6 +214,9 @@ export function renderPage(html, depth = 0, commerce = COMMERCE) {
       return existsSync(p) ? read(p) : `<!-- missing partial ${name} -->`;
     })
     .replace(/<!--@hero-->/g, () => heroMarkup())
+    .replace(/<!--@seo ([\w.-]+)-->/g, (_, f) => seoFrom(f))
+    .replace(/<!--@wrap ([\w.-]+)-->/g, (_, f) => wrapLegacy(f))
+    .replace(/<!--@count (brand|room) ([^>]+?)-->/g, (_, k, n) => countMarkup(k, n))
     .replace(/<!--@jsonld ([\w.-]+)-->/g, (_, f) => jsonLd(f))
     .replace(/<!--@product ([\w-]+)(?: ([\w-]+))?-->/g, (_, sku, cls) => productTile(sku, { cls }))
     .replace(/<!--@collections ([^>]*?)-->/g, (_, spec) => collectionsMarkup(spec));
@@ -160,9 +224,22 @@ export function renderPage(html, depth = 0, commerce = COMMERCE) {
 }
 
 export function listPages() {
-  return readdirSync(join(REDESIGN_ROOT, "pages")).filter((f) => f.endsWith(".html"));
+  const own = readdirSync(join(REDESIGN_ROOT, "pages")).filter((f) => f.endsWith(".html"));
+  return [...new Set([...own, ...ROOM_SLUGS.map((s) => s + ".html")])].sort();
+}
+function roomPage(slug) {
+  const r = ROOMS[slug];
+  const il = r.interlude;
+  const vars = {
+    slug, category: r.category, h1: r.h1, vh: r.vh, nav: r.nav,
+    ilsrc: il ? il.src : "", ilalt: il ? il.alt : "", iltext: il ? il.text : "", ilhref: il ? "custom-design.html" : "", ilcta: il ? "Explore custom design" : "",
+  };
+  return read(join(REDESIGN_ROOT, "templates", "room.html")).replace(/\{\{(\w+)\}\}/g, (_, k) => esc(vars[k] ?? ""));
 }
 export function readPage(name) {
+  const slug = name.replace(/\.html$/, "");
   const p = join(REDESIGN_ROOT, "pages", name);
-  return existsSync(p) ? renderPage(read(p)) : null;
+  if (existsSync(p)) return renderPage(read(p));
+  if (ROOMS[slug]) return renderPage(roomPage(slug));
+  return null;
 }

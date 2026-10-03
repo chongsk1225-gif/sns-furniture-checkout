@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!--@include head-->
+<!--@seo catalog.html-->
+<meta name="twitter:card" content="summary_large_image">
+</head>
+<body data-page="catalog" data-nav="stock">
+<!--@include header-->
+
+<main id="main" class="lx-coll">
+  <!--@include subnav-->
+  <div class="lx-coll-head">
+    <h1 data-title>All stock furniture</h1>
+    <script>(function(){var q=new URLSearchParams(location.search),c=q.get("collection"),s=(q.get("q")||"").trim(),h=document.querySelector("[data-title]");if(c)h.textContent=c+" collection";else if(s)h.textContent="“"+s+"”";})();</script>
+    <p class="lx-coll-head__count" data-count aria-live="polite">&nbsp;</p>
+  </div>
+
+  <div class="lx-filterbar lx-filterbar--stack lx-filterbar--wrap">
+    <div class="lx-filterbar__inner">
+      <form class="lx-find-form" role="search" action="catalog.html" method="get" data-find-form>
+        <label class="lx-vh" for="lx-cat-q">Search stock furniture</label>
+        <input id="lx-cat-q" class="lx-find lx-find--wide" name="q" type="search" placeholder="Search by name, collection or SKU" autocomplete="off" data-q>
+      </form>
+      <div class="lx-sort">
+        <label for="lx-sort">Sort</label>
+        <select id="lx-sort" data-sort aria-label="Sort">
+          <option value="featured">Featured</option>
+          <option value="price-desc">Price: high to low</option>
+          <option value="price-asc">Price: low to high</option>
+          <option value="name">Name</option>
+        </select>
+      </div>
+    </div>
+    <div class="lx-filterbar__inner lx-filterbar__row">
+      <div class="lx-chips" role="group" aria-label="Filter by room" data-chips-room></div>
+    </div>
+    <div class="lx-filterbar__inner lx-filterbar__row">
+      <div class="lx-chips" role="group" aria-label="Filter by maker" data-chips-brand></div>
+    </div>
+  </div>
+
+  <div class="lx-grid" data-grid>
+    <noscript><p class="lx-empty">Please enable JavaScript to search stock furniture, or browse by room from the menu.</p></noscript>
+    <span class="lx-tile" aria-hidden="true"><span class="lx-tile__media"></span><span class="lx-tile__meta"><span class="lx-tile__eyebrow">&nbsp;</span><span class="lx-tile__name">&nbsp;</span><span class="lx-tile__price">&nbsp;</span></span></span>
+    <span class="lx-tile" aria-hidden="true"><span class="lx-tile__media"></span><span class="lx-tile__meta"><span class="lx-tile__eyebrow">&nbsp;</span><span class="lx-tile__name">&nbsp;</span><span class="lx-tile__price">&nbsp;</span></span></span>
+    <span class="lx-tile" aria-hidden="true"><span class="lx-tile__media"></span><span class="lx-tile__meta"><span class="lx-tile__eyebrow">&nbsp;</span><span class="lx-tile__name">&nbsp;</span><span class="lx-tile__price">&nbsp;</span></span></span>
+  </div>
+
+  <div class="lx-more">
+    <p class="lx-more__note" data-more-note aria-live="polite"></p>
+    <button class="lx-btn" type="button" data-more hidden>View more</button>
+  </div>
+</main>
+
+<!--@include footer-->
+<script src="site.js" defer></script>
+<script src="luxe/luxe.js" defer></script>
+<script src="luxe/luxe-catalog.js" defer></script>
+</body>
+</html>

@@ -39,7 +39,7 @@
     var eyebrow = i[3] ? esc(i[3]) + " collection" : esc(i[2]);
     var pri = n < 3 ? ' fetchpriority="high"' : "";
     var lazy = n < 6 ? "" : ' loading="lazy"';
-    return '<a class="lx-tile lx-reveal" href="product-luxe.html?sku=' + encodeURIComponent(i[0]) + '">' +
+    return '<a class="lx-tile lx-reveal" href="product.html?sku=' + encodeURIComponent(i[0]) + '">' +
       '<span class="lx-tile__media"><img src="' + esc(i[5]) + '" width="1000" height="1000" alt="' + esc(i[1]) + '"' + lazy + pri + ' decoding="async"></span>' +
       '<span class="lx-tile__meta"><span class="lx-tile__eyebrow">' + eyebrow + '</span><span class="lx-tile__name">' + esc(i[1]) + '</span><span class="lx-tile__price">' + price(i[4]) + '</span></span></a>';
   }

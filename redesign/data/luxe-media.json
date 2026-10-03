@@ -3,27 +3,61 @@
   "_schema": {
     "SKU": {
       "cardImage": "file name or URL",
-      "video": [{ "src": "luxe/media/...mp4", "poster": "luxe/media/...jpg", "type": "video/mp4", "caption": "" }],
+      "video": [
+        {
+          "src": "luxe/media/...mp4",
+          "poster": "luxe/media/...jpg",
+          "type": "video/mp4",
+          "caption": ""
+        }
+      ],
       "roles": {
-        "lifestyle": ["file names / URLs"],
+        "lifestyle": [
+          "file names / URLs"
+        ],
         "product": [],
         "detail": [],
-        "finish": [{ "src": "", "label": "" }],
+        "finish": [
+          {
+            "src": "",
+            "label": ""
+          }
+        ],
         "diagram": []
       },
-      "hideSpecs": ["dimensions"],
-      "custom": { "confirmed": false }
+      "hideSpecs": [
+        "dimensions"
+      ],
+      "custom": {
+        "confirmed": false
+      }
     }
   },
   "LV02404": {
     "note": "Representative high-end product for the prototype. Roles assigned by viewing each real manufacturer image. Stored text dimensions read 12\"W x 41\"D x 30\"H but the manufacturer's own diagram (lv02404_dim_1.jpg) shows 122\"W, so the text row is suppressed here (source data not edited) and the manufacturer diagram is shown instead.",
     "cardImage": "lv02404_6.jpg",
     "roles": {
-      "lifestyle": ["lv02404_6.jpg", "lv02404_7.jpg"],
-      "product": ["lv02404_1_1.jpg", "lv02404_2_1.jpg", "lv02404_3_1.jpg", "lv02404_4_1.jpg"],
-      "detail": ["lv02404_5_1.jpg", "lv02404_feat.jpg"],
-      "diagram": ["lv02404_dim_1.jpg"]
+      "lifestyle": [
+        "lv02404_6.jpg",
+        "lv02404_7.jpg"
+      ],
+      "product": [
+        "lv02404_1_1.jpg",
+        "lv02404_2_1.jpg",
+        "lv02404_3_1.jpg",
+        "lv02404_4_1.jpg"
+      ],
+      "detail": [
+        "lv02404_5_1.jpg",
+        "lv02404_feat.jpg"
+      ],
+      "diagram": [
+        "lv02404_dim_1.jpg"
+      ]
     },
-    "hideSpecs": ["dimensions"]
+    "hideSpecs": [
+      "dimensions"
+    ],
+    "showSlots": true
   }
 }

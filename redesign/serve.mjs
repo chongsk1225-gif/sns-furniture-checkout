@@ -9,8 +9,8 @@
 import http from "node:http";
 import { readFileSync, existsSync, statSync } from "node:fs";
 import { join, extname, normalize, sep } from "node:path";
-import { REDESIGN_ROOT, PUBLIC_ROOT, readPage } from "./lib/includes.mjs";
-import { collectionData, ROOM_BY_SLUG } from "./lib/collections.mjs";
+import { REDESIGN_ROOT, PUBLIC_ROOT, readPage, listPages } from "./lib/includes.mjs";
+import { collectionData, collectionsIndexData, ROOM_BY_SLUG } from "./lib/collections.mjs";
 
 const PORT = Number(process.env.PORT) || 8810;
 const API_TARGET = process.env.API_TARGET || "http://127.0.0.1:8787";
@@ -67,9 +67,14 @@ const server = http.createServer(async (req, res) => {
       return res.end(JSON.stringify(collectionData(m[1])));
     }
 
-    // redesigned pages
+    if (path === "/data/collections-index.json") {
+      res.writeHead(200, { "content-type": MIME[".json"], "cache-control": "no-store" });
+      return res.end(JSON.stringify(collectionsIndexData()));
+    }
+
+    // redesigned pages (pages/ plus the shared room template)
     const pageName = path === "/" ? "index.html" : path.slice(1);
-    if (/^[\w-]+\.html$/.test(pageName) && existsSync(join(REDESIGN_ROOT, "pages", pageName))) {
+    if (/^[\w-]+\.html$/.test(pageName) && listPages().includes(pageName)) {
       res.writeHead(200, { "content-type": MIME[".html"], "cache-control": "no-store" });
       return res.end(readPage(pageName));
     }

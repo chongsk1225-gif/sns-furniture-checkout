@@ -2,13 +2,10 @@
 <html lang="en">
 <head>
 <!--@include head-->
-<title>SNS Furniture</title>
-<meta name="description" content="SNS Furniture product details.">
-<meta name="robots" content="noindex,follow">
-<link rel="canonical" href="https://snsfurniture.com/product.html">
+<!--@seo product.html-->
 <script>
 /* start the product-data request before CSS/JS finish loading */
-(function(){var s=(new URLSearchParams(location.search).get('sku')||'LV02404').trim();if(!s)return;
+(function(){var s=(new URLSearchParams(location.search).get('sku')||'').trim();if(!s)return;
 window.__lxSku=s;
 window.__lxShard=fetch('data/details/'+encodeURIComponent(s.charAt(0).toLowerCase())+'.json').then(function(r){return r.ok?r.json():[]}).catch(function(){return[]});})();
 </script>
