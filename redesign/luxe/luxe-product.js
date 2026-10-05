@@ -1,251 +1,85 @@
-/* Luxury product page. Reads the SAME product data the existing page uses
-   (data/details/<first-char>.json) plus the optional per-SKU luxury media
-   manifest (data/luxe-media.json). Nothing here modifies product data. */
+/* Product page behavior. The page itself (name, price, specifications, gallery,
+   structured data, related products) is server-rendered HTML from lib/product-view.mjs, so
+   it is fully readable without JavaScript. This script only adds: full-screen viewer
+   (keyboard, touch, focus trap), add to cart, thumbnail navigation, the mobile buy bar and
+   the swipe counter. */
 (function () {
   "use strict";
   var d = document, main = d.querySelector("[data-pdp]");
   if (!main) return;
-  var sku = window.__lxSku || (new URLSearchParams(location.search).get("sku") || "").trim();
   var reduce = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
-  var DIAGRAM = /_(dim|feat|draw|spec|cc)(_\d+)?\.(jpe?g|png)$/i, LIFE = /_life\.(jpe?g|png)$/i;
-  var DELIVERY = "Ask about delivery options for this item. California is our primary service area; qualifying nationwide delivery may be available depending on the product and destination.";
-  var CHECKOUT_NOTE = "Online payment covers merchandise, applicable sales tax, and a flat $150 delivery fee. Online checkout is available for California delivery addresses only.";
+  var sku = main.getAttribute("data-sku") || "";
 
-  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
-  function price(n) { if (n == null) return "Price on request"; var v = Number(n); return "$" + v.toLocaleString("en-US", { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 }); }
-  function base(u) { return String(u).split("/").pop(); }
-  function weight(v) { var n = Number(v); return isFinite(n) && n > 0 ? (Math.round(n * 100) / 100) + " lbs" : ""; }
-  function tidy(arr) {
-    var out = [];
-    (arr || []).filter(Boolean).forEach(function (f) {
-      f = String(f).trim();
-      if (f.length > 70 && !/[,;\n•]/.test(f)) f.replace(/([a-z)])([A-Z])/g, "$1\n$2").split("\n").forEach(function (x) { x = x.trim(); if (x) out.push(x); });
-      else out.push(f);
-    });
-    return out;
-  }
-
-  if (!sku) { missing(); return; }
-  Promise.all([
-    window.__lxShard || fetch("data/details/" + encodeURIComponent(sku.charAt(0).toLowerCase()) + ".json").then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }),
-    fetch("data/luxe-media.json").then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; })
-  ]).then(function (res) {
-    var rec = (res[0] || []).filter(function (x) { return x.sku === sku; })[0];
-    // Hidden products (wrong-photo risk, no approved price) are never shown to customers.
-    if (!rec || rec.hidden === true) return missing();
-    render(rec, (res[1] || {})[sku] || {});
-  });
-
-  function missing() {
-    d.title = "Product not found | SNS Furniture";
-    var rb = d.querySelector('meta[name="robots"]'); if (rb) rb.setAttribute("content", "noindex,follow");
-    main.innerHTML = '<div class="lx-pdp__missing"><h1 class="lx-h2">Product not found</h1><p>This item may no longer be available.</p><a class="lx-btn" href="catalog.html">Browse stock furniture</a></div>';
-  }
-
-  /* ---------- media assembly ---------- */
-  function buildMedia(p, m) {
-    var gallery = (p.gallery && p.gallery.length ? p.gallery : [p.image]).filter(Boolean);
-    var roles = m.roles || {}, used = Object.create(null);
-    function resolve(ref) {
-      if (!ref) return null;
-      if (typeof ref === "object") ref = ref.src;
-      if (/^(https?:)?\/\//.test(ref) || ref.charAt(0) === "/" || ref.indexOf("luxe/") === 0) return ref;
-      return gallery.filter(function (u) { return base(u) === ref; })[0] || null;
-    }
-    function take(list) { var out = []; (list || []).forEach(function (r) { var u = resolve(r); if (u && !used[u]) { used[u] = 1; out.push(u); } }); return out; }
-    var life, prod = [], detail = [], diagram;
-    if (m.roles) { life = take(roles.lifestyle); prod = take(roles.product); detail = take(roles.detail); diagram = take(roles.diagram); }
-    else {
-      life = gallery.filter(function (u) { return LIFE.test(u); }); life.forEach(function (u) { used[u] = 1; });
-      diagram = gallery.filter(function (u) { return !used[u] && DIAGRAM.test(u); }); diagram.forEach(function (u) { used[u] = 1; });
-    }
-    var rest = gallery.filter(function (u) { return !used[u]; });
-    var name = p.name, items = [];
-    (m.video || []).forEach(function (v) { items.push({ kind: "video", src: v.src, poster: v.poster, vtype: v.type, role: "scene", wide: true }); });
-    life.forEach(function (u) { items.push({ kind: "img", src: u, role: "scene", wide: true, alt: name + ", in a room setting" }); });
-    prod.forEach(function (u, i) { items.push({ kind: "img", src: u, role: "cutout", alt: name + ", view " + (i + 1) }); });
-    detail.forEach(function (u) { items.push({ kind: "img", src: u, role: "cutout", alt: name + ", material and construction detail" }); });
-    rest.forEach(function (u, i) { items.push({ kind: "img", src: u, role: "cutout", alt: name + ", photograph " + (i + 1) }); });
-    ((roles.finish) || []).forEach(function (f) { var u = resolve(f); if (u) items.push({ kind: "img", src: u, role: "cutout", alt: name + " finish" + (f.label ? ": " + f.label : ""), cap: f.label }); });
-    diagram.forEach(function (u) { items.push({ kind: "img", src: u, role: "diagram", wide: true, alt: name + " dimensions diagram", cap: "Dimensions" }); });
-    if (items.length) items[0].wide = true;
-    // pairing: any non-wide item left alone in a row becomes wide
-    var pending = null;
-    items.forEach(function (it) {
-      if (it.wide) { if (pending) { pending.wide = true; pending = null; } }
-      else if (pending) pending = null; else pending = it;
-    });
-    if (pending) pending.wide = true;
-    return { items: items, hasLife: life.length > 0, hasDetail: detail.length > 0, hasVideo: (m.video || []).length > 0, hasFinish: (roles.finish || []).length > 0 };
-  }
-
-  /* ---------- render ---------- */
-  function render(p, m) {
-    var media = buildMedia(p, m), items = media.items, lb = [];
-    var hide = m.hideSpecs || [];
-    var cart = typeof SnsCart !== "undefined", canBuy = cart && p.sale != null && !p.hidden;
-    var unverified = p.hidden || p.needs_review || !(p.image_verification && /official_multi|verified_single_image/.test(p.image_verification.status || ""));
-
-    d.title = p.name + " | SNS Furniture";
-    var mt = d.querySelector('meta[name="description"]');
-    if (mt) mt.setAttribute("content", (p.description || (p.name + " from SNS Furniture.")).slice(0, 155));
-    var cn = d.querySelector('link[rel="canonical"]');
-    if (cn) cn.setAttribute("href", "https://snsfurniture.com/product.html?sku=" + encodeURIComponent(p.sku));
-    var ld = { "@context": "https://schema.org", "@type": "Product", "name": p.name, "sku": p.sku, "category": p.category, "description": p.description, "image": p.gallery || [p.image], "brand": { "@type": "Brand", "name": p.brand || "Furniture of America" }, "seller": { "@id": "https://snsfurniture.com/#business" } };
-    if (p.sale != null) ld.offers = { "@type": "Offer", "url": "https://snsfurniture.com/product.html?sku=" + encodeURIComponent(p.sku), "priceCurrency": "USD", "price": p.sale, "availability": "https://schema.org/LimitedAvailability", "seller": { "@id": "https://snsfurniture.com/#business" } };
-    var s = d.createElement("script"); s.type = "application/ld+json"; s.textContent = JSON.stringify(ld); d.head.appendChild(s);
-    var ROOMS = { "Living Room": ["living-room", "Living"], "Dining Room": ["dining-room", "Dining"], "Bedroom": ["bedroom", "Bedroom"], "Mattresses": ["mattresses", "Mattresses"], "Accent Furniture": ["accent", "Accent"] };
-    var roomInfo = ROOMS[p.category];
-    var crumbs = [["Home", "https://snsfurniture.com/"], ["Stock Furniture", "https://snsfurniture.com/stock-furniture.html"]];
-    if (roomInfo) crumbs.push([roomInfo[1], "https://snsfurniture.com/" + roomInfo[0] + ".html"]);
-    crumbs.push([p.name, "https://snsfurniture.com/product.html?sku=" + encodeURIComponent(p.sku)]);
-    var bc = d.createElement("script"); bc.type = "application/ld+json";
-    bc.textContent = JSON.stringify({ "@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": crumbs.map(function (c, i) { return { "@type": "ListItem", "position": i + 1, "name": c[0], "item": c[1] }; }) });
-    d.head.appendChild(bc);
-
-    var figs = items.map(function (it, i) {
-      var cls = "lx-media" + (it.wide ? " lx-media--wide" : "") + " lx-media--" + it.role;
-      if (it.kind === "video") {
-        return '<figure class="' + cls + '" style="cursor:default"><video muted loop playsinline preload="none"' + (it.poster ? ' poster="' + esc(it.poster) + '"' : "") + ' data-src="' + esc(it.src) + '"' + (it.vtype ? ' data-type="' + esc(it.vtype) + '"' : "") + (reduce ? " controls" : "") + ' aria-label="' + esc(p.name) + ' film"></video></figure>';
-      }
-      lb.push({ src: it.src, alt: it.alt });
-      var n = lb.length - 1, first = i === 0;
-      return '<button type="button" class="' + cls + '" data-lb="' + n + '" aria-label="Enlarge: ' + esc(it.alt) + '"><img src="' + esc(it.src) + '" alt="' + esc(it.alt) + '"' + (first ? ' fetchpriority="high"' : ' loading="lazy"') + ' decoding="async">' + (it.cap ? '<span class="lx-media__cap">' + esc(it.cap) + "</span>" : "") + "</button>";
-    }).join("");
-
-    var slots = [];
-    if (!media.hasVideo) slots.push("Cinematic furniture video");
-    if (!media.hasLife) slots.push("Lifestyle / room scene");
-    if (!media.hasDetail) slots.push("Material &amp; detail close-ups");
-    if (!media.hasFinish) slots.push("Finish &amp; material imagery");
-    slots.push("Custom options (when confirmed)");
-    // Review-only placeholders: shown only for products whose manifest opts in (m.showSlots).
-    var slotRow = m.showSlots ? '<div class="lx-slots-row" data-review-only>' + slots.map(function (t) { return '<div class="lx-slot">Media slot<br>' + t + "<br>(pending asset)</div>"; }).join("") + "</div>" : "";
-
-    function spec(l, v) { return v ? "<dt>" + esc(l) + "</dt><dd>" + esc(v) + "</dd>" : ""; }
-    var specs = spec("SKU", p.sku) + spec("Style", p.style) + spec("Finish", p.finish) + spec("Material", p.material) +
-      (hide.indexOf("dimensions") < 0 ? spec("Dimensions", p.dimensions) : "") + spec("Weight", weight(p.netWeight)) + spec("Pack", p.pack);
-    var feats = tidy(p.features);
-
-    var inquire = "contact.html?product=" + encodeURIComponent(p.sku);
-    var actions =
-      (canBuy ? '<button class="lx-btn lx-btn--solid" type="button" data-add>Add to cart</button>' : "") +
-      '<a class="lx-btn" href="' + inquire + '">Inquire</a>' +
-      '<a class="lx-textlink" style="justify-self:center" href="tel:+14243106199">Call (424) 310-6199</a>';
-
-    var info =
-      '<p class="lx-eyebrow">' + esc(p.collection ? p.collection + " collection" : p.category) + "</p>" +
-      '<h1 class="lx-pdp__title">' + esc(p.name) + "</h1>" +
-      '<p class="lx-pdp__type">' + esc(p.type || "") + "</p>" +
-      '<p class="lx-pdp__price">' + esc(price(p.sale)) + "</p>" +
-      '<div class="lx-pdp__actions" data-actions>' + actions + "</div>" +
-      '<p class="lx-pdp__note" data-added hidden><a class="lx-textlink" href="cart.html">View cart</a></p>' +
-      '<p class="lx-pdp__note">' + esc(canBuy ? CHECKOUT_NOTE : "Delivery options depend on the item and destination. California is our primary service area.") + "</p>" +
-      (unverified ? '<p class="lx-pdp__note">A larger verified photograph of this item is not yet available.</p>' : "") +
-      (p.description ? '<p class="lx-pdp__desc">' + esc(p.description) + "</p>" : "") +
-      '<div class="lx-acc">' +
-      (specs ? '<details open><summary>Details</summary><div class="lx-acc__body"><dl class="lx-spec">' + specs + "</dl></div></details>" : "") +
-      (feats.length ? '<details><summary>Features</summary><div class="lx-acc__body"><ul class="lx-feat">' + feats.map(function (f) { return "<li>" + esc(f) + "</li>"; }).join("") + "</ul></div></details>" : "") +
-      "<details><summary>Delivery</summary><div class=\"lx-acc__body\">" + esc(DELIVERY) + "</div></details></div>" +
-      (p.collection ? '<p style="margin-top:28px"><a class="lx-textlink" href="catalog.html?collection=' + encodeURIComponent(p.collection) + '">View the ' + esc(p.collection) + " collection</a></p>" : "");
-
-    var MAXT = 8, thumbsHtml = lb.length > 1 ? '<div class="lx-thumbs" data-thumbs role="group" aria-label="Product images">' + lb.slice(0, MAXT).map(function (t, i) {
-      return '<button type="button" class="lx-thumb" data-goto="' + i + '" aria-label="Show image ' + (i + 1) + ' of ' + lb.length + '"' + (i === 0 ? ' aria-current="true"' : "") + '><img src="' + esc(t.src) + '" alt="" width="64" height="64" loading="lazy" decoding="async" fetchpriority="low"></button>';
-    }).join("") + (lb.length > MAXT ? '<button type="button" class="lx-thumb lx-thumb--more" data-lb-open aria-label="View all ' + lb.length + ' images">+' + (lb.length - MAXT) + "</button>" : "") + "</div>" : "";
-    var roomLink = { "Living Room": ["living-room.html", "Living"], "Dining Room": ["dining-room.html", "Dining"], "Bedroom": ["bedroom.html", "Bedroom"], "Mattresses": ["mattresses.html", "Mattresses"], "Accent Furniture": ["accent.html", "Accent"] }[p.category];
-    main.innerHTML =
-      '<p class="lx-pdp__crumb"><a href="' + (roomLink ? roomLink[0] : "stock-furniture.html") + '">&larr; ' + esc(roomLink ? roomLink[1] : "Stock furniture") + "</a></p>" +
-      '<div class="lx-pdp__layout"><div class="lx-pdp__mediawrap">' + thumbsHtml + '<div class="lx-pdp__media" data-track>' + figs + slotRow + '</div><span class="lx-pdp__counter" data-counter aria-hidden="true"></span></div>' +
-      '<div class="lx-pdp__info">' + info + "</div></div>";
-
-    /* buy bar (mobile): price + primary action once the main actions scroll away */
-    var bar = d.querySelector("[data-buybar]");
-    if (bar) {
-      bar.innerHTML = '<span class="lx-buybar__price">' + esc(price(p.sale)) + "</span>" +
-        (canBuy ? '<button class="lx-btn lx-btn--solid" type="button" data-add>Add to cart</button>' : '<a class="lx-btn lx-btn--solid" href="' + inquire + '">Inquire</a>');
-      var acts = main.querySelector("[data-actions]");
-      if ("IntersectionObserver" in window && acts) new IntersectionObserver(function (es) { bar.classList.toggle("is-visible", !es[0].isIntersecting && es[0].boundingClientRect.top < 0); }).observe(acts);
-    }
-
-    /* add to cart */
-    [].forEach.call(d.querySelectorAll("[data-add]"), function (b) {
-      b.addEventListener("click", function () {
-        SnsCart.add(p.sku, 1);
-        [].forEach.call(d.querySelectorAll("[data-add]"), function (x) { x.textContent = "Added"; setTimeout(function () { x.textContent = "Add to cart"; }, 1600); });
-        var a = main.querySelector("[data-added]"); if (a) a.hidden = false;
-      });
-    });
-
-    /* lightbox */
-    var box = d.querySelector("[data-lightbox]"), bimg = d.querySelector("[data-lb-img]"), bcount = d.querySelector("[data-lb-count]"), cur = 0, opener = null;
-    function show(i) { cur = (i + lb.length) % lb.length; bimg.src = lb[cur].src; bimg.alt = lb[cur].alt; bcount.textContent = (cur + 1) + " / " + lb.length; }
-    function open(i, from) { opener = from; show(i); box.hidden = false; d.documentElement.classList.add("lx-lock"); d.querySelector(".lx-lightbox__close").focus(); }
-    function close() { box.hidden = true; d.documentElement.classList.remove("lx-lock"); if (opener) opener.focus(); }
+  /* ---------- full-screen viewer ---------- */
+  var figs = [].slice.call(main.querySelectorAll("[data-lb]"));
+  var lb = figs.map(function (f) { var im = f.querySelector("img"); return { src: im.currentSrc || im.src, alt: im.alt }; });
+  var box = d.querySelector("[data-lightbox]"), bimg = d.querySelector("[data-lb-img]"), bcount = d.querySelector("[data-lb-count]"), cur = 0, opener = null;
+  function show(i) { if (!lb.length) return; bimg.classList.remove("is-zoomed"); cur = (i + lb.length) % lb.length; bimg.src = figs[cur].querySelector("img").currentSrc || lb[cur].src; bimg.alt = lb[cur].alt; bcount.textContent = (cur + 1) + " / " + lb.length; }
+  function open(i, from) { opener = from; show(i); box.hidden = false; d.documentElement.classList.add("lx-lock"); d.querySelector(".lx-lightbox__close").focus(); }
+  function close() { box.hidden = true; d.documentElement.classList.remove("lx-lock"); if (opener) opener.focus(); }
+  if (box && lb.length) {
     main.addEventListener("click", function (e) { var b = e.target.closest("[data-lb]"); if (b) open(Number(b.getAttribute("data-lb")), b); });
     d.querySelector("[data-lb-close]").addEventListener("click", close);
     d.querySelector("[data-lb-prev]").addEventListener("click", function () { show(cur - 1); });
     d.querySelector("[data-lb-next]").addEventListener("click", function () { show(cur + 1); });
     box.addEventListener("click", function (e) { if (e.target === box) close(); });
+    // click / tap the enlarged image to zoom to 2x around the pointer; only when the file has the pixels
+    bimg.addEventListener("click", function (e) {
+      if (bimg.classList.contains("is-zoomed")) { bimg.classList.remove("is-zoomed"); bimg.style.transformOrigin = ""; return; }
+      if (bimg.naturalWidth && bimg.naturalWidth >= bimg.clientWidth * 1.8) {
+        var r = bimg.getBoundingClientRect();
+        bimg.style.transformOrigin = ((e.clientX - r.left) / r.width * 100) + "% " + ((e.clientY - r.top) / r.height * 100) + "%";
+        bimg.classList.add("is-zoomed");
+      }
+    });
+    var tx = null;
+    box.addEventListener("touchstart", function (e) { tx = e.changedTouches[0].clientX; }, { passive: true });
+    box.addEventListener("touchend", function (e) { if (tx == null) return; var dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 45) show(cur + (dx < 0 ? 1 : -1)); tx = null; }, { passive: true });
     d.addEventListener("keydown", function (e) {
       if (box.hidden) return;
       if (e.key === "Escape") close(); else if (e.key === "ArrowLeft") show(cur - 1); else if (e.key === "ArrowRight") show(cur + 1);
       else if (e.key === "Tab") { var f = [].slice.call(box.querySelectorAll("button")); var i = f.indexOf(d.activeElement); e.preventDefault(); f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus(); }
     });
-
-    /* thumbnails: jump to image; highlight the one in view; "+N" opens the full-screen viewer */
-    var thumbs = main.querySelector("[data-thumbs]");
-    if (thumbs) {
-      thumbs.addEventListener("click", function (e) {
-        var more = e.target.closest("[data-lb-open]"); if (more) { open(MAXT, more); return; }
-        var b = e.target.closest("[data-goto]"); if (!b) return;
-        var fig = main.querySelector('[data-lb="' + b.getAttribute("data-goto") + '"]'); if (!fig) return;
-        var wide = matchMedia("(min-width: 901px)").matches;
-        if (wide) window.scrollTo({ top: fig.getBoundingClientRect().top + scrollY - 150, behavior: reduce ? "auto" : "smooth" });
-        else fig.scrollIntoView({ behavior: reduce ? "auto" : "smooth", inline: "start", block: "nearest" });
-      });
-      if ("IntersectionObserver" in window) {
-        var seen = new IntersectionObserver(function (es) {
-          es.forEach(function (en) {
-            if (!en.isIntersecting) return;
-            var n = en.target.getAttribute("data-lb");
-            [].forEach.call(thumbs.querySelectorAll("[data-goto]"), function (t) { if (t.getAttribute("data-goto") === n) t.setAttribute("aria-current", "true"); else t.removeAttribute("aria-current"); });
-          });
-        }, { rootMargin: "-35% 0px -55% 0px", threshold: 0 });
-        [].forEach.call(main.querySelectorAll("[data-lb]"), function (f) { seen.observe(f); });
-      }
-    }
-
-    /* related products: only the same named collection, from the same visible catalog */
-    if (p.collection && roomInfo) {
-      var idle = window.requestIdleCallback || function (f) { setTimeout(f, 600); };
-      idle(function () {
-        fetch("data/collection-" + roomInfo[0] + ".json").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
-          if (!j) return;
-          var rel = j.items.filter(function (i) { return i[3] === p.collection && i[0] !== p.sku; }).slice(0, 4);
-          if (!rel.length) return;
-          var sec = d.createElement("section"); sec.className = "lx-pdp__related"; sec.setAttribute("aria-labelledby", "lx-rel-h");
-          sec.innerHTML = '<p class="lx-eyebrow" id="lx-rel-h" style="margin-bottom:clamp(24px,3vw,44px)">More from the ' + esc(p.collection) + ' collection</p><div class="lx-related-grid">' + rel.map(function (i) {
-            return '<a class="lx-tile" href="product.html?sku=' + encodeURIComponent(i[0]) + '"><span class="lx-tile__media"><img src="' + esc(i[5]) + '" width="1000" height="1000" alt="' + esc(i[1]) + '" loading="lazy" decoding="async"></span><span class="lx-tile__meta"><span class="lx-tile__eyebrow">' + esc(i[2]) + '</span><span class="lx-tile__name">' + esc(i[1]) + '</span><span class="lx-tile__price">' + price(i[4]) + "</span></span></a>";
-          }).join("") + "</div>";
-          main.appendChild(sec);
-        }).catch(function () {});
-      });
-    }
-
-    /* mobile gallery counter */
-    var track = main.querySelector("[data-track]"), counter = main.querySelector("[data-counter]");
-    var nImgs = items.length;
-    function tick() { var w = track.clientWidth || 1; counter.textContent = (Math.min(nImgs, Math.round(track.scrollLeft / w) + 1)) + " / " + nImgs; }
-    if (track && counter) { tick(); track.addEventListener("scroll", function () { requestAnimationFrame(tick); }, { passive: true }); }
-
-    /* cinematic video: play only while visible, never for reduced-motion */
-    [].forEach.call(main.querySelectorAll("video[data-src]"), function (v) {
-      if (reduce) { v.src = v.getAttribute("data-src"); return; }
-      new IntersectionObserver(function (es) {
-        es.forEach(function (e) {
-          if (e.isIntersecting) { if (!v.src) v.src = v.getAttribute("data-src"); var pr = v.play(); if (pr && pr.catch) pr.catch(function () {}); } else v.pause();
-        });
-      }, { threshold: 0.25 }).observe(v);
-    });
   }
+
+  /* ---------- add to cart ---------- */
+  [].forEach.call(d.querySelectorAll("[data-add]"), function (b) {
+    b.addEventListener("click", function () {
+      if (typeof SnsCart === "undefined") { location.href = "/cart.html"; return; }
+      SnsCart.add(b.getAttribute("data-sku") || sku, 1);
+      [].forEach.call(d.querySelectorAll("[data-add]"), function (x) { x.textContent = "Added"; setTimeout(function () { x.textContent = "Add to cart"; }, 1600); });
+      var a = main.querySelector("[data-added]"); if (a) a.hidden = false;
+    });
+  });
+
+  /* ---------- mobile buy bar: appears once the main actions scroll away ---------- */
+  var bar = d.querySelector("[data-buybar]"), acts = main.querySelector("[data-actions]");
+  if (bar && acts && "IntersectionObserver" in window) new IntersectionObserver(function (es) { bar.classList.toggle("is-visible", !es[0].isIntersecting && es[0].boundingClientRect.top < 0); }).observe(acts);
+
+  /* ---------- thumbnails ---------- */
+  var thumbs = main.querySelector("[data-thumbs]");
+  if (thumbs) {
+    thumbs.addEventListener("click", function (e) {
+      var more = e.target.closest("[data-lb-open]"); if (more) { open(8, more); return; }
+      var b = e.target.closest("[data-goto]"); if (!b) return;
+      var fig = main.querySelector('[data-lb="' + b.getAttribute("data-goto") + '"]'); if (!fig) return;
+      if (matchMedia("(min-width: 901px)").matches) window.scrollTo({ top: fig.getBoundingClientRect().top + scrollY - 150, behavior: reduce ? "auto" : "smooth" });
+      else fig.scrollIntoView({ behavior: reduce ? "auto" : "smooth", inline: "start", block: "nearest" });
+    });
+    if ("IntersectionObserver" in window) {
+      var seen = new IntersectionObserver(function (es) {
+        es.forEach(function (en) {
+          if (!en.isIntersecting) return;
+          var n = en.target.getAttribute("data-lb");
+          [].forEach.call(thumbs.querySelectorAll("[data-goto]"), function (t) { if (t.getAttribute("data-goto") === n) t.setAttribute("aria-current", "true"); else t.removeAttribute("aria-current"); });
+        });
+      }, { rootMargin: "-35% 0px -55% 0px", threshold: 0 });
+      figs.forEach(function (f) { seen.observe(f); });
+    }
+  }
+
+  /* ---------- swipe counter (phones) ---------- */
+  var track = main.querySelector("[data-track]"), counter = main.querySelector("[data-counter]"), n = figs.length;
+  function tick() { var w = track.clientWidth || 1; counter.textContent = (Math.min(n, Math.round(track.scrollLeft / w) + 1)) + " / " + n; }
+  if (track && counter && n > 1) { tick(); track.addEventListener("scroll", function () { requestAnimationFrame(tick); }, { passive: true }); }
 })();

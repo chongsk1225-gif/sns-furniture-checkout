@@ -1,9 +1,10 @@
 # SNS Furniture
 
-> SNS Furniture is a California custom and curated furniture brand. Custom Design is its primary offering. Stock furniture for the living room, dining room, bedroom, mattresses and accent spaces is available under Stock Furniture. Delivery throughout California.
+> SNS Furniture is a California custom furniture and interior design brand. Custom Furniture and Design Services are its primary offerings; curated stock furniture for the living room, dining room, bedroom, mattresses and accent spaces is available under Stock Furniture. Delivery throughout California.
 
 ## Business facts
 - Website: https://snsfurniture.com
+- Operated by: SNS Furniture is a fictitious business name operated by Sash & Shade.
 - Phone: (424) 310-6199 (text or call)
 - Email: info@snsfurniture.com
 - Service area: California. Online checkout is available for California delivery addresses only; for other destinations, please inquire.
@@ -11,19 +12,24 @@
 - Design service: free in-home design service
 - Business address (legal): 1575 Westwood Blvd., Los Angeles, CA 90024
 
-## Custom Design
-- Custom Design: https://snsfurniture.com/custom-design.html
-- Request a design consultation: https://snsfurniture.com/custom-design.html#consultation
+## Custom Furniture and design
+- Custom Furniture: https://snsfurniture.com/custom-furniture.html
+- Custom Living: https://snsfurniture.com/custom-living.html
+- Custom Dining: https://snsfurniture.com/custom-dining.html
+- Custom Bedroom: https://snsfurniture.com/custom-bedroom.html
+- Custom Sectionals: https://snsfurniture.com/custom-sectionals.html
+- Design Services and consultation request: https://snsfurniture.com/design-services.html
+- Room inspiration: https://snsfurniture.com/room-inspiration.html
 
 ## Stock Furniture
 - Stock Furniture: https://snsfurniture.com/stock-furniture.html
-- Collections: https://snsfurniture.com/collections.html
+- Collections (one page per collection, https://snsfurniture.com/collection/<name>/): https://snsfurniture.com/collections.html
 - Living: https://snsfurniture.com/living-room.html
 - Dining: https://snsfurniture.com/dining-room.html
 - Bedroom: https://snsfurniture.com/bedroom.html
 - Mattresses: https://snsfurniture.com/mattresses.html
 - Accent: https://snsfurniture.com/accent.html
-- Search and browse all stock furniture: https://snsfurniture.com/catalog.html
+- Search all stock furniture: https://snsfurniture.com/catalog.html
 
 ## Customer assistance
 - Contact: https://snsfurniture.com/contact.html
@@ -33,7 +39,7 @@
 - Terms: https://snsfurniture.com/terms.html
 
 ## Product information
-Stock furniture product pages (https://snsfurniture.com/product.html?sku=SKU) give the product name, SKU, available specifications and photographs, and the price where one is published. Stock furniture is supplied by ACME Furniture and Furniture of America.
+Every stock furniture product has its own page (https://snsfurniture.com/product/<sku>/) with the product name, SKU, specifications, photographs, price and Product structured data. Stock furniture is supplied by ACME Furniture and Furniture of America.
 
 ## Accuracy note
-Availability, colors, finishes, dimensions, prices and delivery options should be confirmed with SNS Furniture before purchase. Custom Design options are discussed during a design consultation.
+Availability, colors, finishes, dimensions, prices and delivery options should be confirmed with SNS Furniture before purchase. Custom furniture specifications and pricing are confirmed during a design consultation.

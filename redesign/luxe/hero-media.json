@@ -1,26 +1,43 @@
 {
-  "_readme": "Opening media for the home page and the Custom Design page. These are the two supplied Sigma 1006/1007 photographs, copied byte-for-byte from the originals (sha256 fd4adcdb... for the room photograph, 439a02ff... for the studio photograph). They are shown exactly as supplied: the page never recolors, mirrors, flips, stretches, filters or re-crops the furniture. The 'lights turning on' effect is a dark overlay that fades to fully transparent plus warm light layers placed behind the photograph, so the final frame is the original image. Both files are 1000x800, so they are displayed at no more than roughly their native size and are never up-scaled to full-bleed. GENUINE VIDEO LATER: drop the supplied file(s) in redesign/luxe/media/hero/ and fill in 'video' (see example_video). The video then plays inside the same frame above the still photograph, which becomes its poster; it loads after the page is interactive and is skipped for reduced-motion and data-saver visitors, who keep the still. Nothing is generated or synthesized.",
+  "_readme": "Opening media for the home page and the Custom Furniture pages. These are the two supplied Sigma 1006/1007 photographs, copied byte-for-byte from the originals (sha256 fd4adcdb... for the room photograph, 439a02ff... for the studio photograph). They are shown exactly as supplied: the page never recolors, mirrors, flips, stretches, filters or re-crops the furniture. The 'lights turning on' effect is a dark overlay that fades to fully transparent plus warm light layers placed behind the photograph, so the final frame is the original image. Both originals are 1000x800 (also served as AVIF/WebP derivatives at 480w and 800w, plus an AVIF of the full size; the original WebP stays the fallback and the full-resolution file), so they are displayed at no more than roughly their native size and are never up-scaled to full-bleed. GENUINE VIDEO LATER: drop the supplied file(s) in redesign/luxe/media/hero/ and fill in 'video' (see example_video). The video then plays inside the same frame above the still photograph, which becomes its poster; it loads after the page is interactive and is skipped for reduced-motion and data-saver visitors, who keep the still. Nothing is generated or synthesized.",
   "label": "Sigma 1006/1007",
   "poster": {
     "src": "luxe/media/hero/sigma-1006-1007-room.webp",
     "width": 1000,
     "height": 800,
-    "alt": "A low, pale sectional with a wood-toned inset table in a bright corner room with floor-to-ceiling windows, in front of a white marble coffee table."
+    "alt": "A low, pale sectional with a wood-toned inset table in a bright corner room with floor-to-ceiling windows, in front of a white marble coffee table.",
+    "widths": [
+      480,
+      800
+    ]
   },
   "studio": {
     "src": "luxe/media/hero/sigma-1006-1007-studio.webp",
     "width": 1000,
     "height": 800,
-    "alt": "A low sectional in pale stone upholstery with a wood-toned inset table between a chaise and a sofa, photographed against a white studio backdrop."
+    "alt": "A low sectional in pale stone upholstery with a wood-toned inset table between a chaise and a sofa, photographed against a white studio backdrop.",
+    "widths": [
+      480,
+      800
+    ]
   },
   "video": null,
   "example_video": {
     "desktop": [
-      { "src": "luxe/media/hero/sigma-1006-1007.webm", "type": "video/webm" },
-      { "src": "luxe/media/hero/sigma-1006-1007.mp4", "type": "video/mp4" }
+      {
+        "src": "luxe/media/hero/sigma-1006-1007.webm",
+        "type": "video/webm"
+      },
+      {
+        "src": "luxe/media/hero/sigma-1006-1007.mp4",
+        "type": "video/mp4"
+      }
     ],
     "mobile": [
-      { "src": "luxe/media/hero/sigma-1006-1007-mobile.mp4", "type": "video/mp4" }
+      {
+        "src": "luxe/media/hero/sigma-1006-1007-mobile.mp4",
+        "type": "video/mp4"
+      }
     ]
   }
 }

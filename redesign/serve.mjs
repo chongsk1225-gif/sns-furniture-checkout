@@ -10,8 +10,8 @@ import http from "node:http";
 import { gzipSync } from "node:zlib";
 import { readFileSync, existsSync, statSync } from "node:fs";
 import { join, extname, normalize, sep } from "node:path";
-import { REDESIGN_ROOT, PUBLIC_ROOT, readPage, listPages } from "./lib/includes.mjs";
-import { collectionData, collectionsIndexData, ROOM_BY_SLUG } from "./lib/collections.mjs";
+import { REDESIGN_ROOT, PUBLIC_ROOT, readPage } from "./lib/includes.mjs";
+import { renderRoute, renderData } from "./lib/routes.mjs";
 import { buildSitemap } from "./lib/sitemap.mjs";
 
 const PORT = Number(process.env.PORT) || 8810;
@@ -79,30 +79,19 @@ const server = http.createServer(async (req, res) => {
 
     if (path.startsWith("/api/")) return await proxy(req, res);
 
-    // virtual per-room data
-    const m = path.match(/^\/data\/collection-([\w-]+)\.json$/);
-    if (m && ROOM_BY_SLUG[m[1]]) {
-      res.writeHead(200, { "content-type": MIME[".json"], "cache-control": "no-store" });
-      return res.end(JSON.stringify(collectionData(m[1])));
-    }
-
     if (path === "/sitemap.xml") {
       res.writeHead(200, { "content-type": MIME[".xml"], "cache-control": "no-store" });
       return res.end(buildSitemap().xml);
     }
     if (["/robots.txt", "/llms.txt", "/ai.txt"].includes(path)) return sendFile(res, join(REDESIGN_ROOT, "seo", path.slice(1)));
 
-    if (path === "/data/collections-index.json") {
-      res.writeHead(200, { "content-type": MIME[".json"], "cache-control": "no-store" });
-      return res.end(JSON.stringify(collectionsIndexData()));
-    }
+    // derived data (room datasets, collections index, search cards)
+    const data = renderData(path);
+    if (data) { res.writeHead(200, { "content-type": MIME[".json"], "cache-control": "no-store" }); return res.end(data); }
 
-    // redesigned pages (pages/ plus the shared room template)
-    const pageName = path === "/" ? "index.html" : path.slice(1);
-    if (/^[\w-]+\.html$/.test(pageName) && listPages().includes(pageName)) {
-      res.writeHead(200, { "content-type": MIME[".html"], "cache-control": "no-store" });
-      return res.end(readPage(pageName));
-    }
+    // every redesigned page, rendered on demand: /, *.html, /product/<sku>/, /collection/<name>/
+    const html = renderRoute(path);
+    if (html) { res.writeHead(200, { "content-type": MIME[".html"], "cache-control": "no-store" }); return res.end(html); }
 
     // redesign assets (luxe/*) and overlay data (data/luxe-*)
     if (path.startsWith("/luxe/") || /^\/data\/luxe-[\w-]+\.json$/.test(path)) {
@@ -110,14 +99,16 @@ const server = http.createServer(async (req, res) => {
       if (f && isFile(f)) return sendFile(res, f);
     }
 
-    // everything else: the existing site, untouched
-    const f = safeJoin(PUBLIC_ROOT, path === "/" ? "/index.html" : path);
-    if (f && isFile(f)) return sendFile(res, f);
+    // catalog data and other non-page files from public/ (never an old HTML page: every page is redesigned)
+    if (!path.endsWith(".html")) {
+      const f = safeJoin(PUBLIC_ROOT, path === "/" ? "/index.html" : path);
+      if (f && isFile(f)) return sendFile(res, f);
+    }
     res.writeHead(404, { "content-type": MIME[".html"] });
     res.end(readPage("404.html") || "Not found");
   } catch (e) {
     res.writeHead(500, { "content-type": MIME[".txt"] });
-    res.end("Server error: " + (e && e.message));
+    res.end("Server error: " + (e && e.stack || e));
   }
 });
-server.listen(PORT, "127.0.0.1", () => console.log(`luxury redesign preview -> http://127.0.0.1:${PORT}/  (public/ underneath, /api -> ${API_TARGET})`));
+server.listen(PORT, "127.0.0.1", () => console.log(`SNS Furniture preview -> http://127.0.0.1:${PORT}/  (/api -> ${API_TARGET})`));

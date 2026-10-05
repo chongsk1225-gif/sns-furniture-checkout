@@ -12,7 +12,7 @@
   <!--@include subnav-->
   <div class="lx-coll-head">
     <h1>{{h1}}<span class="lx-vh">{{vh}}</span></h1>
-    <p class="lx-coll-head__count" data-count aria-live="polite">&nbsp;</p>
+    <p class="lx-coll-head__count" data-count aria-live="polite"><!--@roomcount {{slug}}--></p>
   </div>
   <div class="lx-intro"><p>{{intro}}</p></div>
 
@@ -30,17 +30,13 @@
     </div>
   </div>
 
-  <div class="lx-grid" data-grid
+  <div class="lx-grid" data-grid data-ssr="24"
        data-interlude-src="{{ilsrc}}"
        data-interlude-alt="{{ilalt}}"
        data-interlude-text="{{iltext}}"
        data-interlude-href="{{ilhref}}"
        data-interlude-cta="{{ilcta}}">
-    <noscript><p class="lx-empty">Please enable JavaScript to browse this collection, or <a class="lx-textlink" href="catalog.html">view all stock furniture</a>.</p></noscript>
-    <!-- fixed-size skeletons, replaced by the real tiles (identical dimensions: no layout shift) -->
-    <span class="lx-tile" aria-hidden="true"><span class="lx-tile__media"></span><span class="lx-tile__meta"><span class="lx-tile__eyebrow">&nbsp;</span><span class="lx-tile__name">&nbsp;</span><span class="lx-tile__price">&nbsp;</span></span></span>
-    <span class="lx-tile" aria-hidden="true"><span class="lx-tile__media"></span><span class="lx-tile__meta"><span class="lx-tile__eyebrow">&nbsp;</span><span class="lx-tile__name">&nbsp;</span><span class="lx-tile__price">&nbsp;</span></span></span>
-    <span class="lx-tile" aria-hidden="true"><span class="lx-tile__media"></span><span class="lx-tile__meta"><span class="lx-tile__eyebrow">&nbsp;</span><span class="lx-tile__name">&nbsp;</span><span class="lx-tile__price">&nbsp;</span></span></span>
+<!--@tiles {{slug}}-->
   </div>
 
   <div class="lx-more">

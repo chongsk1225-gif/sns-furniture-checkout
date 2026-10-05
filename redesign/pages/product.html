@@ -2,47 +2,27 @@
 <html lang="en">
 <head>
 <!--@include head-->
-<!--@seo product.html-->
+<title>SNS Furniture</title>
+<meta name="robots" content="noindex,follow">
+<meta name="description" content="This product page has moved.">
 <script>
-/* Start the product-data request before CSS/JS finish loading, and as soon as the product is
-   known, preload its first gallery image (the one the page will lead with) so the largest
-   paint is not waiting on JavaScript to discover it. Hidden products are never preloaded. */
-(function(){var s=(new URLSearchParams(location.search).get('sku')||'').trim();if(!s)return;
-window.__lxSku=s;
-var media=fetch('data/luxe-media.json').then(function(r){return r.ok?r.json():{}}).catch(function(){return{}});
-window.__lxShard=fetch('data/details/'+encodeURIComponent(s.charAt(0).toLowerCase())+'.json').then(function(r){return r.ok?r.json():[]}).then(function(rows){
-  var rec=(rows||[]).filter(function(x){return x.sku===s})[0];
-  if(rec&&!rec.hidden){media.then(function(m){
-    var g=(rec.gallery&&rec.gallery.length?rec.gallery:[rec.image]).filter(Boolean),D=/_(dim|feat|draw|spec|cc)(_\d+)?\.(jpe?g|png)$/i,L=/_life\.(jpe?g|png)$/i,e=(m||{})[s],u;
-    if(e&&e.roles&&e.roles.lifestyle&&e.roles.lifestyle[0]){u=g.filter(function(x){return x.split('/').pop()===e.roles.lifestyle[0]})[0];}
-    if(!u)u=g.filter(function(x){return L.test(x)})[0]||g.filter(function(x){return !D.test(x)})[0]||g[0];
-    if(u){var l=document.createElement('link');l.rel='preload';l.as='image';l.href=u;l.setAttribute('fetchpriority','high');document.head.appendChild(l);}
-  });}
-  return rows;}).catch(function(){return[]});})();
+/* Legacy address: product.html?sku=SKU. Product pages now live at /product/<sku-slug>/ (real HTML for
+   every visible product). Send visitors there; the slug rules match lib/slug.mjs. */
+(function(){var s=(new URLSearchParams(location.search).get("sku")||"").trim();if(!s)return;
+var slug=s.toLowerCase().replace(/\+/g,"-plus-").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+location.replace("/product/"+slug+"/");})();
 </script>
 </head>
-<body data-page="product" data-nav="">
+<body data-page="legacy-product" data-nav="stock">
 <!--@include header-->
-
-<main id="main" class="lx-pdp" data-pdp>
-  <div class="lx-pdp__layout" aria-busy="true">
-    <div class="lx-pdp__mediawrap"><div class="lx-pdp__media"><div class="lx-media lx-media--wide lx-media--scene"></div></div></div>
-    <div class="lx-pdp__info"></div>
-  </div>
+<main id="main" class="lx-notfound">
+  <p class="lx-eyebrow">Stock Furniture</p>
+  <h1 class="lx-h2">This page has moved.</h1>
+  <p style="color:var(--lx-mute);max-width:34rem">Product pages now have their own addresses. Search for the piece you are looking for, or browse by room.</p>
+  <p style="display:flex;flex-wrap:wrap;gap:12px 26px;align-items:center;margin-top:8px"><a class="lx-btn lx-btn--solid" href="catalog.html">Search stock furniture</a><a class="lx-textlink" href="stock-furniture.html">Stock Furniture</a></p>
 </main>
-
-<div class="lx-buybar" data-buybar role="region" aria-label="Purchase"></div>
-<div class="lx-lightbox" data-lightbox role="dialog" aria-modal="true" aria-label="Enlarged image" hidden>
-  <button class="lx-lightbox__btn lx-lightbox__close" type="button" data-lb-close>Close</button>
-  <button class="lx-lightbox__btn lx-lightbox__prev" type="button" data-lb-prev aria-label="Previous image">&#8249;</button>
-  <img alt="" data-lb-img>
-  <button class="lx-lightbox__btn lx-lightbox__next" type="button" data-lb-next aria-label="Next image">&#8250;</button>
-  <p class="lx-lightbox__count" data-lb-count aria-live="polite"></p>
-</div>
-
 <!--@include footer-->
 <script src="site.js" defer></script>
 <script src="luxe/luxe.js" defer></script>
-<script src="luxe/luxe-product.js" defer></script>
 </body>
 </html>

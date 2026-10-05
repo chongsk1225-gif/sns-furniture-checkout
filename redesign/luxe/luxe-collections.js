@@ -33,7 +33,7 @@
   }
   function tile(r, n) {
     var lazy = n < 6 ? "" : ' loading="lazy"', pri = n < 3 ? ' fetchpriority="high"' : "";
-    return '<a class="lx-tile lx-reveal" href="catalog.html?collection=' + encodeURIComponent(r[0]) + '">' +
+    return '<a class="lx-tile lx-reveal" href="' + LX.collectionUrl(r[0]) + '">' +
       '<span class="lx-tile__media">' + LX.tileImg(n, r[3], r[0] + " collection") + '</span>' +
       '<span class="lx-tile__meta"><span class="lx-tile__eyebrow">' + esc(r[2].slice().sort(function (a, b) { return ORDER.indexOf(a) - ORDER.indexOf(b); }).join(" · ")) + '</span>' +
       '<span class="lx-tile__name">' + esc(r[0]) + '</span><span class="lx-tile__price">' + num(r[1]) + ' pieces</span></span></a>';
@@ -70,8 +70,13 @@
   findEl.addEventListener("input", function () { clearTimeout(t); t = setTimeout(function () { state.q = findEl.value; apply(); }, 120); });
   moreBtn.addEventListener("click", function () { state.shown += PAGE; paint(false); });
 
-  fetch("data/collections-index.json")
+  fetch("/data/collections-index.json")
     .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
-    .then(function (j) { data = j; readUrl(); chips(); apply(); })
+    .then(function (j) {
+      data = j; readUrl(); chips();
+      // The first rows are already real HTML from the server: adopt them instead of redrawing
+      var ssr = grid.querySelectorAll(".lx-tile").length;
+      if (ssr && !state.room && !state.q) { view = filtered(); state.shown = PAGE; rendered = ssr; paint(false); } else apply();
+    })
     .catch(function () { grid.innerHTML = '<p class="lx-empty">Collections could not be loaded. <a class="lx-textlink" href="catalog.html">View all stock furniture</a></p>'; });
 })();

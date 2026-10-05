@@ -20,7 +20,7 @@
   <!--@include subnav-->
   <div class="lx-coll-head">
     <h1>Collections</h1>
-    <p class="lx-coll-head__count" data-count aria-live="polite">&nbsp;</p>
+    <p class="lx-coll-head__count" data-count aria-live="polite"><!--@collectionscount--></p>
   </div>
 
   <div class="lx-filterbar lx-filterbar--wrap">
@@ -33,11 +33,8 @@
     </div>
   </div>
 
-  <div class="lx-cgrid" data-cgrid>
-    <noscript><p class="lx-empty">Please enable JavaScript to browse collections, or <a class="lx-textlink" href="catalog.html">view all stock furniture</a>.</p></noscript>
-    <span class="lx-tile" aria-hidden="true"><span class="lx-tile__media"></span><span class="lx-tile__meta"><span class="lx-tile__eyebrow">&nbsp;</span><span class="lx-tile__name">&nbsp;</span></span></span>
-    <span class="lx-tile" aria-hidden="true"><span class="lx-tile__media"></span><span class="lx-tile__meta"><span class="lx-tile__eyebrow">&nbsp;</span><span class="lx-tile__name">&nbsp;</span></span></span>
-    <span class="lx-tile" aria-hidden="true"><span class="lx-tile__media"></span><span class="lx-tile__meta"><span class="lx-tile__eyebrow">&nbsp;</span><span class="lx-tile__name">&nbsp;</span></span></span>
+  <div class="lx-cgrid" data-cgrid data-ssr="24">
+<!--@collectiontiles-->
   </div>
 
   <div class="lx-more">

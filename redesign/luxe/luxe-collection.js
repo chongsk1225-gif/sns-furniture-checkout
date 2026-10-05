@@ -39,16 +39,16 @@
     var eyebrow = i[3] ? esc(i[3]) + " collection" : esc(i[2]);
     var pri = n < 3 ? ' fetchpriority="high"' : "";
     var lazy = n < 6 ? "" : ' loading="lazy"';
-    return '<a class="lx-tile lx-reveal" href="product.html?sku=' + encodeURIComponent(i[0]) + '">' +
+    return '<a class="lx-tile lx-reveal" href="' + LX.productUrl(i[0]) + '">' +
       '<span class="lx-tile__media">' + LX.tileImg(n, i[5], i[1]) + '</span>' +
       '<span class="lx-tile__meta"><span class="lx-tile__eyebrow">' + eyebrow + '</span><span class="lx-tile__name">' + esc(i[1]) + '</span><span class="lx-tile__price">' + price(i[4]) + '</span></span></a>';
   }
   function interlude() {
     var src = grid.getAttribute("data-interlude-src");
     if (!src) return "";
-    return '<figure class="lx-interlude lx-reveal"><img src="' + esc(src) + '" alt="' + esc(grid.getAttribute("data-interlude-alt") || "") + '" loading="lazy" decoding="async">' +
+    return '<figure class="lx-interlude lx-reveal"><img src="' + esc(src) + '" width="1600" height="686" alt="' + esc(grid.getAttribute("data-interlude-alt") || "") + '" loading="lazy" decoding="async">' +
       '<span class="lx-interlude__scrim"></span><figcaption class="lx-interlude__copy"><p>' + esc(grid.getAttribute("data-interlude-text") || "") + '</p>' +
-      '<a class="lx-btn lx-btn--light" href="' + esc(grid.getAttribute("data-interlude-href") || "#") + '">' + esc(grid.getAttribute("data-interlude-cta") || "Explore") + '</a></figcaption></figure>';
+      '<a class="lx-btn lx-btn--light" href="/' + esc(grid.getAttribute("data-interlude-href") || "#") + '">' + esc(grid.getAttribute("data-interlude-cta") || "Explore") + '</a></figcaption></figure>';
   }
 
   var view = [], rendered = 0;
@@ -89,9 +89,15 @@
   sortEl.addEventListener("change", function () { state.sort = sortEl.value; apply(); });
   moreBtn.addEventListener("click", function () { state.shown += PAGE; paint(false); });
 
-  fetch("data/collection-" + slug + ".json")
+  fetch("/data/collection-" + slug + ".json")
     .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
-    .then(function (j) { data = j; readUrl(); sortEl.value = state.sort; buildChips(); apply(); })
+    .then(function (j) {
+      data = j; readUrl(); sortEl.value = state.sort; buildChips();
+      // The first rows are already real HTML from the server: adopt them instead of redrawing
+      var ssr = grid.querySelectorAll(".lx-tile").length;
+      if (ssr && state.type == null && state.sort === "featured") { view = filtered(); state.shown = PAGE; rendered = ssr; paint(false); }
+      else apply();
+    })
     .catch(function () {
       grid.innerHTML = '<p class="lx-empty">This collection could not be loaded. <a class="lx-textlink" href="catalog.html">View the full catalog</a></p>';
     });

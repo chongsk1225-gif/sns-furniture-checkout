@@ -1,4 +1,4 @@
-/* Custom Design page behavior.
+/* Custom Furniture and Design Services page behavior.
    1. Renders ONLY confirmed options from data/luxe-custom.json. Until
       SNS Furniture confirms what it offers (confirmed: true) the options
       section stays hidden: no option names, materials, fabrics or
@@ -18,7 +18,7 @@
 
   var host = d.querySelector("[data-custom-options]"), section = d.querySelector("[data-custom-options-section]");
   if (!host || !section) return;
-  fetch("data/luxe-custom.json")
+  fetch("/data/luxe-custom.json")
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (cfg) {
       if (!cfg || cfg.confirmed !== true || !cfg.groups || !cfg.groups.length) return;

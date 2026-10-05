@@ -6,6 +6,19 @@
   var d = document, root = d.documentElement, body = d.body;
   var reduce = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
 
+  /* ---------- URL helpers: the same slug rules as lib/slug.mjs ---------- */
+  function skuSlug(s) { return String(s).toLowerCase().replace(/\+/g, "-plus-").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""); }
+  function nameSlug(s) { return String(s).toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""); }
+  function productUrl(sku) { return "/product/" + skuSlug(sku) + "/"; }
+  function collectionUrl(name) { return "/collection/" + nameSlug(name) + "/"; }
+  /* the whole visible catalog as compact cards (derived data, loaded only when searching) */
+  var cardsP = null;
+  function cards() {
+    return cardsP || (cardsP = fetch("/data/catalog-cards.json").then(function (r) { return r.json(); }).then(function (j) {
+      return j.items.map(function (r) { return { sku: r[0], name: r[1], type: r[2], category: r[3], brand: j.brands[r[4]], collection: r[5], sale: r[6], image: r[7], finish: r[8] }; });
+    }).catch(function () { cardsP = null; return []; }));
+  }
+
   /* ---------- header: transparent over the hero, solid after it ---------- */
   var header = d.querySelector("[data-lx-header]");
   function setSolid(on) { if (header) header.classList.toggle("is-solid", on); }
@@ -87,7 +100,7 @@
     var money = function (n) { if (n == null) return ""; var v = Number(n); return "$" + v.toLocaleString("en-US", { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 }); };
     var load = function () {
       if (index) return Promise.resolve(index);
-      return loading || (loading = fetch("data/catalog-index.json").then(function (r) { return r.json(); }).then(function (rows) {
+      return loading || (loading = cards().then(function (rows) {
         index = rows.map(function (p) { return { p: p, h: (p.name + " " + p.type + " " + p.sku + " " + (p.collection || "") + " " + (p.finish || "")).toLowerCase() }; });
         return index;
       }).catch(function () { loading = null; return []; }));
@@ -104,7 +117,7 @@
         }
         if (sInput.value.toLowerCase().split(/\s+/).filter(Boolean).join(" ") !== toks.join(" ")) return;
         sList.innerHTML = hits.map(function (p) {
-          return '<li><a href="product.html?sku=' + encodeURIComponent(p.sku) + '"><img src="' + escH(p.image) + '" alt="" width="56" height="56" loading="lazy" decoding="async"><span><span class="lx-suggest__name">' + escH(p.name) + '</span><span class="lx-suggest__meta">' + escH(p.collection ? p.collection + " collection" : p.type) + '</span></span><span class="lx-suggest__price">' + money(p.sale) + '</span></a></li>';
+          return '<li><a href="' + productUrl(p.sku) + '"><img src="' + escH(p.image) + '" alt="" width="56" height="56" loading="lazy" decoding="async"><span><span class="lx-suggest__name">' + escH(p.name) + '</span><span class="lx-suggest__meta">' + escH(p.collection ? p.collection + " collection" : p.type) + '</span></span><span class="lx-suggest__price">' + money(p.sale) + '</span></a></li>';
         }).join("") + (total ? '<li><a class="lx-suggest__all" href="catalog.html?q=' + encodeURIComponent(sInput.value.trim()) + '">See all ' + total.toLocaleString("en-US") + ' results</a></li>' : '<li><a class="lx-suggest__all" href="catalog.html">No matches — browse all stock furniture</a></li>');
         sList.hidden = false;
       });
@@ -149,10 +162,10 @@
   }
   function tileImg(n, src, alt) {
     var e = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
-    if (n < 4) return '<img src="' + e(src) + '" width="1000" height="1000" alt="' + e(alt) + '"' + (n < 2 ? ' fetchpriority="high"' : "") + ' decoding="async">';
+    if (n < 2) return '<img src="' + e(src) + '" width="1000" height="1000" alt="' + e(alt) + '"' + (n < 2 ? ' fetchpriority="high"' : "") + ' decoding="async">';
     return '<img src="' + GIF + '" data-src="' + e(src) + '" width="1000" height="1000" alt="' + e(alt) + '" decoding="async">';
   }
-  window.LX = { observe: observe, reduce: reduce, tileImg: tileImg };
+  window.LX = { observe: observe, reduce: reduce, tileImg: tileImg, productUrl: productUrl, collectionUrl: collectionUrl, cards: cards };
 
   /* ---------- small verified images are shown at native size, never stretched ---------- */
   function markNative(img) {

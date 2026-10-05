@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!--@include head-->
+<title>{{title}}</title>
+<meta name="description" content="{{description}}">
+<link rel="canonical" href="{{canonical}}">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta property="og:type" content="product">
+<meta property="og:site_name" content="SNS Furniture">
+<meta property="og:title" content="{{title}}">
+<meta property="og:description" content="{{description}}">
+<meta property="og:url" content="{{canonical}}">
+<meta property="og:image" content="{{ogimg}}">
+<meta property="og:image:alt" content="{{ogalt}}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="{{ogimg}}">
+{{{pricetag}}}
+{{{preload}}}
+{{{jsonld}}}
+</head>
+<body data-page="product" data-nav="{{nav}}">
+<!--@include header-->
+
+<main id="main" class="lx-pdp" data-pdp data-sku="{{sku}}">
+  {{{crumbs}}}
+  <div class="lx-pdp__layout">
+    <div class="lx-pdp__mediawrap">{{{thumbs}}}<div class="lx-pdp__media" data-track>{{{figs}}}</div><span class="lx-pdp__counter" data-counter aria-hidden="true"></span></div>
+    <div class="lx-pdp__info">
+      {{{info}}}
+    </div>
+  </div>
+  {{{related}}}
+</main>
+
+<div class="lx-buybar" data-buybar role="region" aria-label="Purchase"><span class="lx-buybar__price">{{price}}</span>{{{bar}}}</div>
+<div class="lx-lightbox" data-lightbox role="dialog" aria-modal="true" aria-label="Enlarged image" hidden>
+  <button class="lx-lightbox__btn lx-lightbox__close" type="button" data-lb-close>Close</button>
+  <button class="lx-lightbox__btn lx-lightbox__prev" type="button" data-lb-prev aria-label="Previous image">&#8249;</button>
+  <img alt="" data-lb-img>
+  <button class="lx-lightbox__btn lx-lightbox__next" type="button" data-lb-next aria-label="Next image">&#8250;</button>
+  <p class="lx-lightbox__count" data-lb-count aria-live="polite"></p>
+</div>
+
+<!--@include footer-->
+<script src="site.js" defer></script>
+<script src="luxe/luxe.js" defer></script>
+<script src="luxe/luxe-product.js" defer></script>
+</body>
+</html>

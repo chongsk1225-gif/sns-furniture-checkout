@@ -7,6 +7,7 @@
 // classifier (image-pipeline/lib/subsections.mjs) rather than duplicating it.
 import { classify, SUBSECTIONS_BY_ROOM } from "../../image-pipeline/lib/subsections.mjs";
 import { catalogIndex, catalogDetails, luxeMedia, resolveRef } from "./includes.mjs";
+import { cardImage, cleanScore } from "./cards.mjs";
 
 import { ROOMS } from "./rooms.mjs";
 
@@ -30,16 +31,13 @@ export function collectionData(slug) {
     const cls = classify(p);
     const bucket = cls ? buckets.indexOf(cls.bucket) : -1;
     const d = details.get(p.sku);
-    let image = media[p.sku] && media[p.sku].cardImage ? resolveRef(p.sku, media[p.sku].cardImage) : p.image;
-    if (DIAGRAM.test(image) && d) {
-      const alt = (d.gallery || []).find((u) => !DIAGRAM.test(u));
-      if (alt) image = alt;
-    }
+    const image = cardImage(p);
     // [sku, name, type, collection, price, image, bucketIdx, galleryCount]
     items.push([p.sku, p.name, p.type || "", p.collection || "", p.sale, image, bucket, (d && d.gallery ? d.gallery.length : 0)]);
   }
   // "Featured" order: best-documented listings first (most photos), then price.
-  items.sort((a, b) => b[7] - a[7] || (b[4] || 0) - (a[4] || 0));
+  // cleaner, front-facing shots first, then best-documented, then price
+  items.sort((a, b) => cleanScore(b[5]) - cleanScore(a[5]) || b[7] - a[7] || (b[4] || 0) - (a[4] || 0));
   return { room, buckets, fields: ["sku", "name", "type", "collection", "price", "image", "bucket", "photos"], items };
 }
 

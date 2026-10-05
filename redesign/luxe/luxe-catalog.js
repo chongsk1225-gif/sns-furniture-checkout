@@ -1,7 +1,7 @@
 /* Catalog search / browse: the whole visible catalog, searchable by name,
    collection, SKU, type or finish. Room and maker filters, sort and
    incremental "view more", all URL-addressable (?q= ?room= ?brand= ?collection=).
-   Reads the existing data/catalog-index.json unchanged. */
+   Reads the derived data/catalog-cards.json (built from the unchanged catalog index). */
 (function () {
   "use strict";
   var d = document, grid = d.querySelector("[data-grid]");
@@ -59,7 +59,7 @@
   function tile(p, n) {
     var eyebrow = p.collection ? esc(p.collection) + " collection" : esc(p.type || ROOM_LABEL[p.category] || "");
     var lazy = n < 6 ? "" : ' loading="lazy"', pri = n < 3 ? ' fetchpriority="high"' : "";
-    return '<a class="lx-tile lx-reveal" href="product.html?sku=' + encodeURIComponent(p.sku) + '">' +
+    return '<a class="lx-tile lx-reveal" href="' + LX.productUrl(p.sku) + '">' +
       '<span class="lx-tile__media">' + LX.tileImg(n, p.image, p.name) + '</span>' +
       '<span class="lx-tile__meta"><span class="lx-tile__eyebrow">' + eyebrow + '</span><span class="lx-tile__name">' + esc(p.name) + '</span><span class="lx-tile__price">' + price(p.sale) + '</span></span></a>';
   }
@@ -104,9 +104,9 @@
   d.querySelector("[data-find-form]").addEventListener("submit", function (e) { e.preventDefault(); state.q = qEl.value.trim(); apply(); });
   moreBtn.addEventListener("click", function () { state.shown += PAGE; paint(false); });
 
-  fetch("data/catalog-index.json")
-    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+  LX.cards()
     .then(function (rows) {
+      if (!rows.length) throw new Error("no data");
       // featured order: priced items with a real (non-diagram) photo first
       all = rows.slice().sort(function (a, b) { return (DIAGRAM.test(a.image) ? 1 : 0) - (DIAGRAM.test(b.image) ? 1 : 0); });
       hay = all.map(function (p) { return (p.name + " " + p.type + " " + p.sku + " " + p.category + " " + (p.collection || "") + " " + (p.finish || "") + " " + (p.brand || "")).toLowerCase(); });

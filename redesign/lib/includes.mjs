@@ -16,13 +16,14 @@
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { ROOMS, ROOM_SLUGS } from "./rooms.mjs";
+import { productPath, collectionPath } from "./slug.mjs";
 import { fileURLToPath } from "node:url";
 
 export const REDESIGN_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const PUBLIC_ROOT = join(REDESIGN_ROOT, "..", "public");
 
 const read = (p) => readFileSync(p, "utf8");
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 /* ───────────── catalog access (read-only, cached) ───────────── */
 let _index = null;
@@ -42,9 +43,13 @@ export function catalogDetails() {
   }
   return _details;
 }
+let _media = null;
 export function luxeMedia() {
-  const p = join(REDESIGN_ROOT, "data", "luxe-media.json");
-  return existsSync(p) ? JSON.parse(read(p)) : {};
+  if (!_media) {
+    const p = join(REDESIGN_ROOT, "data", "luxe-media.json");
+    _media = existsSync(p) ? JSON.parse(read(p)) : {};
+  }
+  return _media;
 }
 
 /** Resolve a manifest image reference: absolute URL as-is, otherwise a file name matched against the product's own gallery. */
@@ -63,27 +68,42 @@ export function fmtPrice(n) {
 }
 
 /* ───────────── cinematic opening ─────────────
-   <!--@opening room-->    home page: the Sigma 1006/1007 room photograph
-   <!--@opening studio-->  Custom Design page: the Sigma 1006/1007 studio photograph
+   <!--@opening home-->       home page: the Sigma 1006/1007 room photograph
+   <!--@opening custom-->     Custom Furniture hub: the Sigma 1006/1007 studio photograph
+   openingMarkup(variant, copy) is also called by the custom room pages with their own copy.
    The photographs are shown exactly as supplied (no crop beyond the frame's own
    5:4 aspect, no filter, no flip, no recolor). The "lights turning on" reveal is
    a dark overlay that fades to fully transparent and warm light layers placed
    BEHIND the photograph, so the final frame is the original image. All motion is
    CSS-only, so it runs without JavaScript, and is switched off for
    reduced-motion and data-saver visitors (who get the final frame at once).
+   Owned images are served as <picture> (AVIF / WebP derivatives, original as fallback)
+   with explicit width and height.
 
    VIDEO SLOT: set "video" in luxe/hero-media.json (see its _readme) and a genuine
    high-resolution video will play inside the same frame, above the still image,
    which then acts as the poster. Nothing is generated or synthesized here. */
-function openingMarkup(variant = "room") {
+const OPEN_COPY = {
+  room: { eyebrow: "SNS Furniture", h1: "Custom furniture, designed around you", lede: "Interior design and consultation, delivered throughout California.", primary: ["Explore Custom Furniture", "custom-furniture.html"], secondary: ["Shop Stock Furniture", "stock-furniture.html"] },
+  studio: { eyebrow: "SNS Furniture", h1: "Custom Furniture", lede: "Designed around you, and around your space.", primary: ["Request a Design Consultation", "#consultation"], secondary: ["How it works", "#process"] },
+};
+// Responsive derivatives of the two owned photographs (see luxe/media/hero/*-<w>.avif|webp).
+const pictureFor = (still, alt) => {
+  const stem = String(still.src).replace(/\.webp$/, "");
+  const widths = still.widths || [];
+  const set = (ext) => widths.map((w) => `${stem}-${w}.${ext} ${w}w`).concat(`${stem}.${ext === "avif" ? "avif" : "webp"} ${still.width || 1000}w`).join(", ");
+  const sizes = "(max-width: 900px) 100vw, 64vw";
+  const img = `<img class="lx-open__img" src="${esc(still.src)}" width="${still.width || 1000}" height="${still.height || 800}" alt="${esc(alt)}" fetchpriority="high" decoding="async">`;
+  if (!widths.length) return img;
+  return `<picture><source type="image/avif" srcset="${esc(set("avif"))}" sizes="${sizes}"><source type="image/webp" srcset="${esc(set("webp"))}" sizes="${sizes}">${img}</picture>`;
+};
+export function openingMarkup(variant = "room", copyOverride) {
   const cfg = JSON.parse(read(join(REDESIGN_ROOT, "luxe", "hero-media.json")));
   const studio = variant === "studio";
   const still = studio ? cfg.studio : cfg.poster;
   const video = studio ? null : cfg.video;
   const hasVideo = !!(video && ((video.desktop && video.desktop.length) || (video.mobile && video.mobile.length)));
-  const img = still && still.src
-    ? `<img class="lx-open__img" src="${esc(still.src)}" width="${still.width || 1000}" height="${still.height || 800}" alt="${esc(still.alt || "")}" fetchpriority="high" decoding="async">`
-    : "";
+  const img = still && still.src ? pictureFor(still, still.alt || "") : "";
   const videoTag = hasVideo
     ? `<!-- VIDEO SLOT: genuine supplied footage plays here, above the still image -->
       <video class="lx-hero__video" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1" data-desktop='${esc(JSON.stringify(video.desktop || []))}' data-mobile='${esc(JSON.stringify(video.mobile || []))}'></video>`
@@ -91,20 +111,13 @@ function openingMarkup(variant = "room") {
   const pause = hasVideo
     ? `<button class="lx-hero__toggle" type="button" data-hero-toggle aria-label="Pause background video" hidden><span aria-hidden="true"></span></button>`
     : "";
-  const copy = studio
-    ? `<p class="lx-open__eyebrow">SNS Furniture</p>
-      <h1 class="lx-open__title" id="open-h1">Custom Design</h1>
-      <p class="lx-open__lede">Furniture designed around your space.</p>
+  const c = { ...OPEN_COPY[studio ? "studio" : "room"], ...(copyOverride || {}) };
+  const copy = `<p class="lx-open__eyebrow">${esc(c.eyebrow)}</p>
+      <h1 class="lx-open__title" id="open-h1">${esc(c.h1)}</h1>
+      <p class="lx-open__lede">${esc(c.lede)}</p>
       <div class="lx-open__cta">
-        <a class="lx-btn lx-btn--light" href="#consultation">Request a Design Consultation</a>
-        <a class="lx-textlink lx-open__second" href="#process">How it works</a>
-      </div>`
-    : `<p class="lx-open__eyebrow">SNS Furniture</p>
-      <h1 class="lx-open__title" id="open-h1">The Custom Design Collection</h1>
-      <p class="lx-open__lede">Custom, without compromise.</p>
-      <div class="lx-open__cta">
-        <a class="lx-btn lx-btn--light" href="custom-design.html">Explore Custom Design</a>
-        <a class="lx-textlink lx-open__second" href="stock-furniture.html">Shop Stock Furniture</a>
+        <a class="lx-btn lx-btn--light" href="${esc(c.primary[1])}">${esc(c.primary[0])}</a>
+        <a class="lx-textlink lx-open__second" href="${esc(c.secondary[1])}">${esc(c.secondary[0])}</a>
       </div>`;
   return `<section class="lx-open lx-open--${variant}" data-hero data-open data-has-video="${hasVideo ? "1" : "0"}" aria-labelledby="open-h1">
     <div class="lx-open__room" aria-hidden="true"><span class="lx-open__wall"></span><span class="lx-open__floor"></span></div>
@@ -130,7 +143,7 @@ function productTile(sku, opts = {}) {
   const media = luxeMedia()[sku] || {};
   const img = media.cardImage ? resolveRef(sku, media.cardImage) : idx.image;
   const coll = idx.collection ? `${esc(idx.collection)} collection` : esc(idx.type || "");
-  return `<a class="lx-tile${opts.cls ? " " + opts.cls : ""}" href="product.html?sku=${encodeURIComponent(sku)}">
+  return `<a class="lx-tile${opts.cls ? " " + opts.cls : ""}" href="${productPath(sku)}">
       <span class="lx-tile__media"><img src="${esc(img)}" width="1000" height="1000" alt="${esc(idx.name)}" loading="lazy" decoding="async"></span>
       <span class="lx-tile__meta"><span class="lx-tile__eyebrow">${coll}</span><span class="lx-tile__name">${esc(idx.name)}</span><span class="lx-tile__price">${esc(fmtPrice(idx.sale))}</span></span>
     </a>`;
@@ -144,7 +157,7 @@ function collectionsMarkup(spec) {
   const rows = spec.split(",").map((s) => s.trim().split(":")).filter((a) => a.length >= 3);
   const idx = catalogIndex();
   const lis = rows.map(([name, , room], i) =>
-    `<li><a href="catalog.html?collection=${encodeURIComponent(name)}" data-preview="${i}"><span class="lx-clist__name">${esc(name)}</span><span class="lx-clist__meta">${esc(room)}</span></a></li>`).join("\n      ");
+    `<li><a href="${collectionPath(name)}" data-preview="${i}"><span class="lx-clist__name">${esc(name)}</span><span class="lx-clist__meta">${esc(room)}</span></a></li>`).join("\n      ");
   const imgs = rows.map(([name, sku], i) => {
     const r = idx.find((x) => x.sku === sku);
     const media = luxeMedia()[sku] || {};
@@ -216,14 +229,21 @@ function wrapLegacy(file) {
   if (!m) return `<!-- no <main> in ${esc(file)} -->`;
   // About is brand copy, so it follows the SNS Furniture public brand; the legal/policy pages are
   // deliberately left word-for-word (their entity name is a legal matter, not a styling one).
-  return (file === "about.html" ? brand(m[1]) : m[1])
+  // Legal / policy pages stay word-for-word. The only additions are the fictitious-business-name
+  // disclosure under the title and, for the contact form, an internal e-mail subject line.
+  const NOTE = '<p class="lx-legal-note">SNS Furniture is a fictitious business name operated by Sash &amp; Shade.</p>';
+  const withNote = ["terms.html", "privacy.html", "returns.html", "delivery.html", "contact.html"].includes(file);
+  let body = m[1];
+  if (file === "contact.html") body = body.replace('value="Sash and Shade Inquiry"', 'value="SNS Furniture inquiry"');
+  if (withNote) body = body.replace("</h1>", "</h1>" + NOTE);
+  return body
     .replace(/\sstyle="[^"]*"/g, "")                       // presentation only; wording/ids/forms untouched
     .replace(/<div class="wrap[^"]*"[^>]*>/g, '<div class="lx-legacy__inner">')
     .replace(/<section class="(?:shop|section|policy)">/g, '<section class="lx-legacy__section">')
     .replace(/<div class="eyebrow">/g, '<p class="lx-eyebrow">').replace(/(<p class="lx-eyebrow">[^<]*)<\/div>/g, "$1</p>");
 }
 /* ───────────── structured data helpers ───────────── */
-const SITE = "https://snsfurniture.com";
+export const SITE = "https://snsfurniture.com";
 export const OG_IMAGE = `${SITE}/luxe/media/hero/sigma-1006-1007-room.webp`;
 const ld = (o) => `<script type="application/ld+json">${JSON.stringify(o)}</script>`;
 function breadcrumbs(spec) {
@@ -243,16 +263,23 @@ function collectionPage(spec) {
     isPartOf: { "@id": `${SITE}/#website` }, publisher: { "@id": `${SITE}/#business` },
   });
 }
+const FAQ_DESIGN = [
+  ["What happens in a design consultation?", "You share your space, how you use it and what you have in mind, and we talk through direction and next steps. Final specifications and pricing are confirmed during the consultation."],
+  ["Is the in-home design service free?", "Yes. SNS Furniture offers free in-home design service. Text or call (424) 310-6199."],
+  ["Can a custom design be shown to me before I commit?", "Final specifications and pricing are confirmed during your consultation, before any order is placed."],
+  ["Where does SNS Furniture deliver?", "Delivery options depend on the product and destination. California is the primary service area, and qualifying nationwide delivery may be available."],
+];
 const FAQ = [
-  ["What does SNS Furniture offer?", "SNS Furniture offers custom furniture design, along with stock furniture for the living room, dining room, bedroom, mattresses and accent spaces."],
-  ["How do I start a custom design?", "Request a design consultation from the Custom Design page, or text or call (424) 310-6199."],
+  ["What does SNS Furniture offer?", "SNS Furniture offers custom furniture and interior design, along with stock furniture for the living room, dining room, bedroom, mattresses and accent spaces."],
+  ["How do I start a custom design?", "Request a design consultation from the Custom Furniture or Design Services page, or text or call (424) 310-6199."],
   ["Does SNS Furniture offer design help?", "Yes. SNS Furniture offers free in-home design service. Text or call (424) 310-6199."],
   ["Does SNS Furniture deliver?", "Delivery options depend on the product and destination. California is the primary service area, and qualifying nationwide delivery may be available."],
 ];
 // One source for the visible FAQ and its FAQPage markup, so they can never disagree.
-function faqMarkup() {
-  const details = FAQ.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join("\n      ");
-  const data = ld({ "@context": "https://schema.org", "@type": "FAQPage", mainEntity: FAQ.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) });
+function faqMarkup(kind) {
+  const FAQ_LIST = kind === "design" ? FAQ_DESIGN : FAQ;
+  const details = FAQ_LIST.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join("\n      ");
+  const data = ld({ "@context": "https://schema.org", "@type": "FAQPage", mainEntity: FAQ_LIST.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) });
   return `${details}\n      ${data}`;
 }
 function orgMarkup() {
@@ -285,19 +312,35 @@ export function renderPage(html, depth = 0, commerce = COMMERCE) {
       return existsSync(p) ? read(p) : `<!-- missing partial ${name} -->`;
     })
     .replace(/<!--@hero-->/g, () => openingMarkup("room"))
-    .replace(/<!--@opening (room|studio)-->/g, (_, v) => openingMarkup(v))
+    .replace(/<!--@opening (home|custom)-->/g, (_, v) => openingMarkup(v === "home" ? "room" : "studio"))
     .replace(/<!--@seo ([\w.-]+)-->/g, (_, f) => seoFrom(f))
     .replace(/<!--@wrap ([\w.-]+)-->/g, (_, f) => wrapLegacy(f))
     .replace(/<!--@count (brand|room) ([^>]+?)-->/g, (_, k, n) => countMarkup(k, n))
     .replace(/<!--@ogimage ([^>]*?)-->/g, (_, alt) => ogImage(alt))
-    .replace(/<!--@faq-->/g, () => faqMarkup())
+    .replace(/<!--@faq(?: (\w+))?-->/g, (_, k) => faqMarkup(k))
     .replace(/<!--@org-->/g, () => orgMarkup())
     .replace(/<!--@breadcrumbs ([^>]*?)-->/g, (_, spec) => breadcrumbs(spec))
     .replace(/<!--@collectionpage ([^>]*?)-->/g, (_, spec) => collectionPage(spec))
     .replace(/<!--@jsonld ([\w.-]+)-->/g, (_, f) => jsonLd(f))
     .replace(/<!--@product ([\w-]+)(?: ([\w-]+))?-->/g, (_, sku, cls) => productTile(sku, { cls }))
     .replace(/<!--@collections ([^>]*?)-->/g, (_, spec) => collectionsMarkup(spec));
-  return depth < 2 && /<!--@/.test(out) ? renderPage(out, depth + 1, commerce) : out;
+  let out2 = out;
+  for (const [name, fn] of MARKERS) out2 = out2.replace(new RegExp("<!--@" + name + "(?: ([^>]*?))?-->", "g"), (_, a) => fn(a, commerce));
+  return depth < 3 && /<!--@/.test(out2) ? renderPage(out2, depth + 1, commerce) : out2;
+}
+
+/* ───────────── extension markers (registered by lib/markers.mjs) ───────────── */
+const MARKERS = new Map();
+export function registerMarker(name, fn) { MARKERS.set(name, fn); }
+
+/* Root-relative URLs everywhere, so a page at /product/x/ resolves assets and links
+   exactly like a page at /. In-page anchors, absolute URLs, mailto/tel are untouched. */
+const KEEP = new RegExp("^(https?:|/|#|mailto:|tel:|data:|javascript:)");
+export function finalize(html) {
+  return html
+    .replace(/(href|src|action)="([^"]*)"/g, (m, attr, v) => (!v || KEEP.test(v) ? m : `${attr}="/${v}"`))
+    // srcset / imagesrcset: a comma-separated list of "url width" candidates
+    .replace(/(srcset|imagesrcset)="([^"]*)"/g, (m, attr, v) => `${attr}="${v.split(",").map((c) => { const t = c.trim(); return t && !KEEP.test(t) ? "/" + t : t; }).join(", ")}"`);
 }
 
 export function listPages() {
@@ -309,14 +352,14 @@ function roomPage(slug) {
   const il = r.interlude;
   const vars = {
     slug, category: r.category, h1: r.h1, vh: r.vh, nav: r.nav, intro: r.intro,
-    ilsrc: il ? il.src : "", ilalt: il ? il.alt : "", iltext: il ? il.text : "", ilhref: il ? "custom-design.html" : "", ilcta: il ? "Explore custom design" : "",
+    ilsrc: il ? il.src : "", ilalt: il ? il.alt : "", iltext: il ? il.text : "", ilhref: il ? "custom-furniture.html" : "", ilcta: il ? "Explore Custom Furniture" : "",
   };
   return read(join(REDESIGN_ROOT, "templates", "room.html")).replace(/\{\{(\w+)\}\}/g, (_, k) => esc(vars[k] ?? ""));
 }
 export function readPage(name) {
   const slug = name.replace(/\.html$/, "");
   const p = join(REDESIGN_ROOT, "pages", name);
-  if (existsSync(p)) return renderPage(read(p));
-  if (ROOMS[slug]) return renderPage(roomPage(slug));
+  if (existsSync(p)) return finalize(renderPage(read(p)));
+  if (ROOMS[slug]) return finalize(renderPage(roomPage(slug)));
   return null;
 }
