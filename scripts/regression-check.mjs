@@ -8,8 +8,9 @@
  * storefront page plus the checkout pages/endpoints respond as expected.
  */
 const BASE = (process.argv[2] || process.env.BASE || "http://127.0.0.1:8787").replace(/\/$/, "");
-const EXPECTED_PRODUCTS = 9369;
+const EXPECTED_PRODUCTS = 9369; // detail records (visible + hidden)
 const EXPECTED_BROWSABLE = 9181; // catalog-index.json excludes hidden (unverifiable-photo) products
+const EXPECTED_HIDDEN = 188; // intentionally hidden; never browsable, never priced, never payable
 
 let failures = 0;
 function ok(name) {
@@ -84,8 +85,16 @@ const run = async () => {
     const { res, text } = await get("/data/catalog-pricing.json");
     const map = JSON.parse(text);
     const n = Object.keys(map).length;
-    if (res.status === 200 && n === EXPECTED_PRODUCTS) ok(`catalog-pricing.json has ${n} SKUs`);
-    else bad("catalog-pricing.json", `status ${res.status}, keys ${n}`);
+    if (res.status === 200 && n === EXPECTED_BROWSABLE) ok(`catalog-pricing.json has ${n} SKUs (visible products only)`);
+    else bad("catalog-pricing.json", `status ${res.status}, keys ${n}, expected ${EXPECTED_BROWSABLE}`);
+    const blockedRes = await get("/data/catalog-blocked.json");
+    const blocked = JSON.parse(blockedRes.text);
+    const leaked = blocked.filter((sku) => sku in map).length;
+    if (blockedRes.res.status === 200 && blocked.length === EXPECTED_HIDDEN && leaked === 0) {
+      ok(`catalog-blocked.json lists ${blocked.length} hidden SKUs, none priced`);
+    } else bad("catalog-blocked.json", `status ${blockedRes.res.status}, listed ${blocked.length}, priced ${leaked}`);
+    if (n + EXPECTED_HIDDEN === EXPECTED_PRODUCTS) ok(`priced ${n} + hidden ${EXPECTED_HIDDEN} = ${EXPECTED_PRODUCTS} total products`);
+    else bad("catalog totals", `${n} + ${EXPECTED_HIDDEN} != ${EXPECTED_PRODUCTS}`);
   } catch (e) {
     bad("catalog-pricing.json", String(e));
   }

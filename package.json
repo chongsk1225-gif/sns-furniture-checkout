@@ -11,7 +11,11 @@
     "dev": "npm run build:pricing && wrangler dev",
     "regression": "node scripts/regression-check.mjs",
     "migrate:local": "wrangler d1 migrations apply sns-furniture-orders --local",
-    "migrate:staging": "wrangler d1 migrations apply sns-furniture-orders-staging --env staging --remote"
+    "migrate:staging": "wrangler d1 migrations apply sns-furniture-orders-staging --env staging --remote",
+    "validate:catalog": "node scripts/validate-catalog.mjs",
+    "test:checkout-security": "node scripts/hidden-sku-checkout-test.mjs",
+    "preview:redesign": "node redesign/serve.mjs",
+    "build:redesign": "node redesign/build.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.130.0"

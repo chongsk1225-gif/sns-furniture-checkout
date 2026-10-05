@@ -1,0 +1,20 @@
+{
+  "_readme": "Confirmed Custom Design options. NOTHING here is confirmed yet, so the public Custom Design page shows no option names, materials, fabrics or dimensions, and the 'Your design' section stays hidden. When SNS Furniture confirms what it offers, set confirmed to true and fill groups; the section appears automatically, one block per group (label, optional summary, optional swatch images). No placeholder labels are ever shown to the public.",
+  "confirmed": false,
+  "groups": [],
+  "_example_group": {
+    "key": "finish",
+    "label": "Finish",
+    "summary": "One or two plain sentences, written from confirmed information only.",
+    "options": [
+      {
+        "label": "",
+        "image": "luxe/media/custom/....jpg"
+      }
+    ]
+  },
+  "process": {
+    "confirmed": false,
+    "steps": []
+  }
+}

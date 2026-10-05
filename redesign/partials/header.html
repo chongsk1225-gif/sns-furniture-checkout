@@ -1,0 +1,74 @@
+<a class="lx-skip" href="#main">Skip to content</a>
+<span class="lx-sentinel" data-lx-sentinel aria-hidden="true"></span>
+<header class="lx-header" data-lx-header>
+  <div class="lx-header__bar">
+    <button class="lx-menu-btn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="lx-menu" data-lx-menu-open>
+      <span class="lx-menu-btn__icon" aria-hidden="true"><i></i><i></i></span>
+      <span class="lx-menu-btn__label">Menu</span>
+    </button>
+    <a class="lx-logo" href="index.html" aria-label="SNS Furniture, home"><!--@include logo--></a>
+    <nav class="lx-nav" aria-label="Primary">
+      <a href="custom-furniture.html" data-nav="custom">Custom Furniture</a>
+      <a href="collections.html" data-nav="collections">Collections</a>
+      <a href="living-room.html" data-nav="living">Living</a>
+      <a href="dining-room.html" data-nav="dining">Dining</a>
+      <a href="bedroom.html" data-nav="bedroom">Bedroom</a>
+      <a href="stock-furniture.html" data-nav="stock">Stock Furniture</a>
+      <a href="design-services.html" data-nav="design">Design Services</a>
+    </nav>
+    <div class="lx-header__right">
+      <button class="lx-search-btn" type="button" aria-expanded="false" aria-controls="lx-search" data-lx-search-open>
+        <span class="lx-search-btn__label">Search</span>
+        <svg class="lx-search-btn__icon" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="8.5" cy="8.5" r="6" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M13 13l5 5" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+      </button>
+      <!--@if commerce--><a class="lx-cart" href="cart.html" data-lx-cart><span>Cart</span> <span class="lx-cart__count" data-cart-count>0</span></a><!--@endif-->
+    </div>
+  </div>
+</header>
+
+<div class="lx-menu" id="lx-menu" role="dialog" aria-modal="true" aria-label="Site menu" hidden>
+  <div class="lx-menu__inner">
+    <button class="lx-menu__close" type="button" data-lx-menu-close>Close</button>
+    <nav class="lx-menu__nav" aria-label="Main">
+      <a class="lx-menu__top" href="custom-furniture.html">Custom Furniture</a>
+      <span class="lx-menu__sub" role="group" aria-label="Custom furniture">
+        <a href="custom-living.html">Custom Living</a>
+        <a href="custom-dining.html">Custom Dining</a>
+        <a href="custom-bedroom.html">Custom Bedroom</a>
+        <a href="custom-sectionals.html">Custom Sectionals</a>
+      </span>
+      <a class="lx-menu__top" href="collections.html">Collections</a>
+      <a class="lx-menu__top" href="living-room.html">Living</a>
+      <a class="lx-menu__top" href="dining-room.html">Dining</a>
+      <a class="lx-menu__top" href="bedroom.html">Bedroom</a>
+      <a class="lx-menu__top" href="stock-furniture.html">Stock Furniture</a>
+      <span class="lx-menu__sub" role="group" aria-label="More stock furniture">
+        <a href="mattresses.html">Mattresses</a>
+        <a href="accent.html">Accent</a>
+        <a href="catalog.html">All stock furniture</a>
+      </span>
+      <a class="lx-menu__top" href="design-services.html">Design Services</a>
+    </nav>
+    <div class="lx-menu__aside">
+      <a href="contact.html">Contact</a>
+      <a href="room-inspiration.html">Room inspiration</a>
+      <a href="delivery.html">Delivery</a>
+      <a href="returns.html">Returns</a>
+      <a href="about.html">About</a>
+      <a href="tel:+14243106199">(424) 310-6199</a>
+    </div>
+  </div>
+</div>
+
+<div class="lx-search" id="lx-search" role="dialog" aria-modal="true" aria-label="Search" hidden>
+  <div class="lx-search__panel">
+    <form class="lx-search__form" action="catalog.html" method="get" role="search">
+      <label class="lx-search__label" for="lx-search-input">Search the collection</label>
+      <input class="lx-search__input" id="lx-search-input" name="q" type="search" placeholder="Name, collection or SKU" autocomplete="off" aria-controls="lx-suggest" aria-autocomplete="list">
+      <button class="lx-btn" type="submit">Search</button>
+    </form>
+    <ul class="lx-suggest" id="lx-suggest" data-lx-suggest aria-label="Suggestions" hidden></ul>
+    <p class="lx-search__quick"><a href="custom-furniture.html">Custom Furniture</a><a href="collections.html">Collections</a><a href="living-room.html">Living</a><a href="dining-room.html">Dining</a><a href="bedroom.html">Bedroom</a><a href="design-services.html">Design Services</a></p>
+  </div>
+  <button class="lx-search__close" type="button" data-lx-search-close>Close</button>
+</div>

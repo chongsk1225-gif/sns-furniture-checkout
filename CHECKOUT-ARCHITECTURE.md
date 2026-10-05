@@ -364,3 +364,7 @@ and re-run the full regression + rejection-case suite against the live staging U
 **Production** (`sns-furniture` / `snsfurniture.com`) and any live charge happen only after that
 passes and you explicitly approve. Nothing about production, DNS, email, `sashandshade.com`, or
 the Sash & Shade Cloudflare project is touched by any of this.
+
+---
+
+**Storefront redesign.** The luxury storefront (every customer-facing page) lives in `redesign/` as an overlay that renders over `public/` without editing it; see `redesign/README.md` for routes, build and preview commands, and the rules it enforces (hidden products have no page, no feed row and no checkout path; prices come only from the server-side pricing index).

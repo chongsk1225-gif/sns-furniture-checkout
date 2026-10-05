@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!--@include head-->
+<title>{{title}}</title>
+<meta name="description" content="{{description}}">
+<link rel="canonical" href="{{canonical}}">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SNS Furniture">
+<meta property="og:title" content="{{title}}">
+<meta property="og:description" content="{{description}}">
+<meta property="og:url" content="{{canonical}}">
+<meta property="og:image" content="{{ogimg}}">
+<meta property="og:image:alt" content="{{ogalt}}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="{{ogimg}}">
+{{{preload}}}
+{{{jsonld}}}
+</head>
+<body data-page="collection-page" data-nav="collections">
+<!--@include header-->
+
+<main id="main" class="lx-coll">
+  {{{crumbs}}}
+  <section class="lx-chead" aria-labelledby="coll-h1">
+    <div class="lx-chead__copy">
+      <p class="lx-eyebrow">Collection</p>
+      <h1 id="coll-h1">{{name}}</h1>
+      <p class="lx-chead__intro">{{intro}}</p>
+      <p class="lx-chead__meta">{{count}} pieces</p>
+      <p class="lx-chead__links">{{{rooms}}}<a class="lx-textlink" href="/collections.html">All collections</a></p>
+    </div>
+    {{{hero}}}
+  </section>
+  <div class="lx-grid" aria-label="{{name}} collection">{{{tiles}}}</div>
+  <section class="lx-design" aria-labelledby="coll-consult">
+    <div class="lx-design__inner">
+      <p class="lx-eyebrow">Design Services</p>
+      <h2 class="lx-h2" id="coll-consult">Make it yours.</h2>
+      <p style="color:var(--lx-mute);max-width:30rem">Speak with a designer about your room, or about a custom piece inspired by this collection.</p>
+      <a class="lx-btn lx-btn--solid" href="design-services.html#consultation">Request a Design Consultation</a>
+    </div>
+  </section>
+</main>
+
+<!--@include footer-->
+<script src="site.js" defer></script>
+<script src="luxe/luxe.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!--@include head-->
+<title>SNS Furniture</title>
+<meta name="robots" content="noindex,follow">
+<meta name="description" content="This product page has moved.">
+<script>
+/* Legacy address: product.html?sku=SKU. Product pages now live at /product/<sku-slug>/ (real HTML for
+   every visible product). Send visitors there; the slug rules match lib/slug.mjs. */
+(function(){var s=(new URLSearchParams(location.search).get("sku")||"").trim();if(!s)return;
+var slug=s.toLowerCase().replace(/\+/g,"-plus-").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+location.replace("/product/"+slug+"/");})();
+</script>
+</head>
+<body data-page="legacy-product" data-nav="stock">
+<!--@include header-->
+<main id="main" class="lx-notfound">
+  <p class="lx-eyebrow">Stock Furniture</p>
+  <h1 class="lx-h2">This page has moved.</h1>
+  <p style="color:var(--lx-mute);max-width:34rem">Product pages now have their own addresses. Search for the piece you are looking for, or browse by room.</p>
+  <p style="display:flex;flex-wrap:wrap;gap:12px 26px;align-items:center;margin-top:8px"><a class="lx-btn lx-btn--solid" href="catalog.html">Search stock furniture</a><a class="lx-textlink" href="stock-furniture.html">Stock Furniture</a></p>
+</main>
+<!--@include footer-->
+<script src="site.js" defer></script>
+<script src="luxe/luxe.js" defer></script>
+</body>
+</html>
